@@ -6,6 +6,7 @@ import datetime
 
 # Secret key for JWT encoding/decoding
 SECRET_KEY = "your_secret_key_here"
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'csv', 'xlsx'}
 
 def generate_access_token(info, expires_in="12h"):
     # Convert expires_in to seconds (12 hours = 43200 seconds)
@@ -64,3 +65,6 @@ def validate_token(f):
 # Function to get the current user from `g`
 def get_current_user():
     return getattr(g, "current_user", None)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS

@@ -1,13 +1,16 @@
 from flask import Flask
 from flask_pymongo import PyMongo
- 
+
+UPLOAD_FOLDER = './app/uploads/'
+
 app = Flask(__name__)
 app.config["SECRET_KEY"] = "db24c608640f5034b30b8e1e1eb5618ed0ffdbf5"
 app.config["MONGO_URI"] = "mongodb://localhost:27017/todo_db"
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # mongodb database
 mongodb_client = PyMongo(app)
 db = mongodb_client.db
 
-from .user.route import *
-from .authorization.route import *
+from .routes.authorization import *
+from .routes.admin import *
