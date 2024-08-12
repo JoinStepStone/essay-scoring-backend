@@ -15,5 +15,10 @@ class UserSchema(BaseModel):
     ethnicity: str
     race: str
     gender: str
-    # description: Optional[str] = None
 
+    class Config:
+        # This allows using MongoDB ObjectId fields with Pydantic
+        arbitrary_types_allowed = True
+        json_encoders = {
+            ObjectId: str
+        }

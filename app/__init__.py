@@ -12,5 +12,10 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 mongodb_client = PyMongo(app)
 db = mongodb_client.db
 
+user_simulation_database = db.usersimulation
+simulation_database = db.simulation
+user_database = db.user
+
 from .routes.authorization import *
 from .routes.admin import *
+from .routes.student import *

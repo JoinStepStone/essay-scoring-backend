@@ -13,6 +13,15 @@ class SimulationSchema(BaseModel):
     startTime: datetime
     endTime: datetime
     filePath: str
+    classCode: str
+    status: bool = True
+    participants: int = 0
 
+    class Config:
+        # This allows using MongoDB ObjectId fields with Pydantic
+        arbitrary_types_allowed = True
+        json_encoders = {
+            ObjectId: str
+        }
     # description: Optional[str] = None
 

@@ -1,12 +1,24 @@
 import jwt
 from flask import request, jsonify, g
 from functools import wraps
-from app import db
+from app import db, app
 import datetime
+import os
 
 # Secret key for JWT encoding/decoding
 SECRET_KEY = "your_secret_key_here"
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'csv', 'xlsx'}
+
+def upload_file(file):
+    fileDummy = file.filename.rsplit('.', 1)[0]
+    extension = file.filename.rsplit('.', 1)[1]
+    filename = fileDummy + str(datetime.datetime.utcnow()) + "." + extension
+    
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    file.save(filepath)
+
+    # Process the string_field and file here
+    return filepath
 
 def generate_access_token(info, expires_in="12h"):
     # Convert expires_in to seconds (12 hours = 43200 seconds)
@@ -31,7 +43,7 @@ def validate_token(f):
             # Extract the token from the Authorization header
             auth_header = request.headers.get('Authorization', None)
             if auth_header is None:
-                return jsonify({"error": "Unauthorized"}), 401
+                return {"data": "", "code": 401, "message": "Header does not have token"}
 
             token = auth_header.split(" ")[1]
 
@@ -39,14 +51,14 @@ def validate_token(f):
             try:
                 data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
             except jwt.ExpiredSignatureError:
-                return jsonify({"error": "Token expired"}), 401
+                return {"data": "", "code": 401, "message": "Token has been expired"}
             except jwt.InvalidTokenError:
-                return jsonify({"error": "Invalid token"}), 401
+                return {"data": "", "code": 401, "message": "Token is invalid"}
 
             # Find the user in the database
             user = db.users.find_one({"email": data["email"]})
             if not user:
-                return jsonify({"error": "User not found"}), 404
+                return {"data": "", "code": 401, "message": "User is not found"}
 
             # Attach user info to the global `g` object
             g.current_user = {
@@ -58,7 +70,7 @@ def validate_token(f):
 
             return f(*args, **kwargs)
         except Exception as e:
-            return jsonify({"error": str(e)}), 401
+            return {"data": "", "code": 401, "message": str(e)}
 
     return decorated_function
 
@@ -68,3 +80,4 @@ def get_current_user():
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
