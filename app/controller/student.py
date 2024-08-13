@@ -10,13 +10,14 @@ def simulationByClassCodeController(data):
     try:
         simulations = list(simulation_database.find(
             {"classCode": data['classCode']}, 
-            {"classCode": 1, "simulationName": 1, "_id" : 0}
+            {"classCode": 1, "simulationName": 1}
         ))
 
         if not simulations:
             return "", False, "No simulation found"
         
-        return simulations, True, "Successfully fetched"
+        simulations[0]["_id"] = str(simulations[0]["_id"])
+        return simulations[0], True, "Successfully fetched"
 
     except ValidationError as e:
         return str(e), False, "Something went bad"
@@ -25,11 +26,12 @@ def simulationSelectionController(data):
     try:
         # Validate incoming data using Pydantic schema
         simulationData = UserSimulationSchema(**data)
+        found = list(user_simulation_database.find(data))
+        print("found",'\n',found,'\n')
+        # result = user_simulation_database.insert_one(simulationData.dict())
 
-        result = user_simulation_database.insert_one(simulationData.dict())
-
-        if result:
-            return "", True, "Data inserted successfully"
+        # if result:
+        return "", True, "Data inserted successfully"
 
     except ValidationError as e:
         return str(e), False, "Something went bad"
@@ -38,14 +40,17 @@ def simulationSelectionController(data):
 def getSimulationSelectedController(data):
     try:
         userSimulations = list(user_simulation_database.find({"userId": data['userId']},{"_id": 0}))
+
         if not userSimulations:
-            return "", False, "No simulation found"
+            return [], True, "Successfully fetched"
 
         userSimulations = [UserSimulationSchema(**userSimulation).dict() for userSimulation in userSimulations]
 
         simulations = []
         for userSimulation in userSimulations:
-            simulationObject = list(simulation_database.find({"_id": ObjectId(userSimulation["simulationId"])},{"_id": 0}))
+            simulationObject = list(simulation_database.find({"_id": ObjectId(userSimulation["simulationId"])},{"id": 0}))
+            simulationObject[0]["grade"] = userSimulation["grade"]
+            simulationObject[0]["_id"] = str(simulationObject[0]["_id"])
             simulations.append(simulationObject[0])
             
         return simulations, True, "Successfully fetched"
@@ -54,18 +59,22 @@ def getSimulationSelectedController(data):
         return str(e), False, "Something went bad"
 
 
-def simulationDetailController(data):
+def simulationDetailController(data): 
     try:
-        userSimulations = list(user_simulation_database.find({"simulationId": data['simulationId']},{"_id": 0}))
+        userSimulations = list(user_simulation_database.find({"simulationId": data['simulationId'],"userId": data['userId']},{"_id": 0}))
         if not userSimulations:
             return "", False, "No simulation found"
 
         userSimulations = [UserSimulationSchema(**userSimulation).dict() for userSimulation in userSimulations]
+        simulationDetails = list(simulation_database.find({"_id": ObjectId(userSimulations[0]["simulationId"])},{"_id": 0}))[0]
+        userDetails = list(user_database.find({"_id": ObjectId(userSimulations[0]["userId"])},{"_id": 0}))[0]
         
-        for userSimulation in userSimulations:
-            userSimulation["simulationId"] = list(simulation_database.find({"_id": ObjectId(userSimulation["simulationId"])},{"_id": 0}))[0]
-
-        return userSimulations, True, "Successfully fetched"
+        result = {
+            "simulationDetails": simulationDetails,
+            "userDetails": userDetails,
+            "result": userSimulations
+        }
+        return result, True, "Successfully fetched"
 
     except ValidationError as e:
         return str(e), False, "Something went bad"

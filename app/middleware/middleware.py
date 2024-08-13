@@ -42,7 +42,6 @@ def validate_token_admin(f):
         try:
             # Extract the token from the Authorization header
             auth_header = request.headers.get('Authorization', None)
-            print("auth_header",auth_header,request.headers)
             if auth_header is None:
                 return {"data": "", "code": 401, "message": "Header does not have token"}
 

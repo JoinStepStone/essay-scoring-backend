@@ -30,7 +30,7 @@ def getAllTheStuedents():
         for user in users:
             userSimulations = list(user_simulation_database.find({"userId": user["id"]}))
             if(len(userSimulations)):
-                print(userSimulations)
+                print("avgScore")
             else:
                 user["avgScore"] = 0
                 user["examTaken"] = 0
@@ -62,28 +62,26 @@ def getAllTheSimulations():
 
 def getTheSimulationDetails(data): 
     try:
-
-        userSimulations = list(user_simulation_database.find({"simulationId": data['simulationId']},{"_id": 0}))
-        print("1")
-        if not userSimulations:
+        simulation =list(simulation_database.find({"_id": ObjectId(data['simulationId'])},{"_id": 0}))
+        if not simulation:
             return "", False, "No simulation found"
-
-        userSimulations = [UserSimulationSchema(**userSimulation).dict() for userSimulation in userSimulations]
-        print("2",userSimulations)
-        
-        # Step 1: Convert grades to numeric and sort the data
-        userSimulations = sorted(userSimulations, key=lambda x: float(x['grade']) if x['grade'] is not None else 0.0, reverse=True)
-
-        # Step 2: Assign ranks
-        for i, item in enumerate(userSimulations, start=1):
-            item['rank'] = i
             
-        for userSimulation in userSimulations:
-            userSimulation["userId"] = list(user_database.find({"_id": ObjectId(userSimulation["userId"])},{"_id": 0}))[0]
+        userSimulations = list(user_simulation_database.find({"simulationId": data['simulationId']},{"_id": 0}))
+        if userSimulations:
+            userSimulations = [UserSimulationSchema(**userSimulation).dict() for userSimulation in userSimulations]
+        
+            # Step 1: Convert grades to numeric and sort the data
+            userSimulations = sorted(userSimulations, key=lambda x: float(x['grade']) if x['grade'] is not None else 0.0, reverse=True)
 
-        print("3")
+            # Step 2: Assign ranks
+            for i, item in enumerate(userSimulations, start=1):
+                item['rank'] = i
+                
+            for userSimulation in userSimulations:
+                userSimulation["userId"] = list(user_database.find({"_id": ObjectId(userSimulation["userId"])},{"_id": 0}))[0]
+
         result = {
-            "simulationDetails": list(simulation_database.find({"_id": ObjectId(userSimulations[0]["simulationId"])},{"_id": 0}))[0],
+            "simulationDetails": simulation[0],
             "result": userSimulations
         }
         return result, True, "Successfully fetched"

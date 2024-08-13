@@ -28,7 +28,7 @@ def get_all_simulations():
 @app.route('/admin/uploadFile', methods=['POST'])
 @validate_token_admin
 def upload_file_route():
-    print("upload_file_route",request.files,request.form.get('category'))
+    print("upload_file_route", request.files,request.form.get('category'))
     if 'file' not in request.files:
         return {'data': '', "code": 400, "message": "No files are found"}
     file = request.files['file']
