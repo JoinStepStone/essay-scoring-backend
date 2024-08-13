@@ -10,6 +10,7 @@ def Home():
 @app.route('/signUp', methods=['POST'])
 def signUp():
     data = request.json
+    data = data["data"]
     response, success, message = signUpController(data)
     if success:
         return jsonify({"data": response, "code": 201, "message": message})
@@ -18,6 +19,7 @@ def signUp():
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
+    data = data["data"]
     response, success, message = signInController(data)
     if success:
         return jsonify({"data": response, "code": 201, "message": message})

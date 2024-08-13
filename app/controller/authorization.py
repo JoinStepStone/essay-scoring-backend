@@ -5,6 +5,8 @@ from ..middleware.middleware import generate_access_token
 
 def signUpController(data):
     try:
+
+        print(data)
         # Validate incoming data using Pydantic schema
         user = UserSchema(**data)
 
@@ -30,7 +32,7 @@ def signInController(data):
         if existing_user:
             existing_user['_id'] = str(existing_user['_id'])
             tokenized = generate_access_token(existing_user)
-            return str(tokenized), True, "Signed in successfully"
+            return {"token":tokenized,"role":existing_user["role"]}, True, "Signed in successfully"
 
         return "", False, "User does not exist"
     except ValidationError as e:

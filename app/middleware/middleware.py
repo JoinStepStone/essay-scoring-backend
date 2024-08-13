@@ -1,7 +1,7 @@
 import jwt
 from flask import request, jsonify, g
 from functools import wraps
-from app import db, app
+from app import user_database, app
 import datetime
 import os
 
@@ -36,6 +36,45 @@ def generate_access_token(info, expires_in="12h"):
 
     return token
 
+def validate_token_admin(f):
+    @wraps(f)
+    def decorated_function_admin(*args, **kwargs):
+        try:
+            # Extract the token from the Authorization header
+            auth_header = request.headers.get('Authorization', None)
+            print("auth_header",auth_header,request.headers)
+            if auth_header is None:
+                return {"data": "", "code": 401, "message": "Header does not have token"}
+
+            token = auth_header.split(" ")[1]
+            
+            # Decode the JWT token
+            try:
+                data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            except jwt.ExpiredSignatureError:
+                return {"data": "", "code": 401, "message": "Token has been expired"}
+            except jwt.InvalidTokenError:
+                return {"data": "", "code": 401, "message": "Token is invalid"}
+
+            # Find the user in the database
+            user = user_database.find_one({"email": data['info']["email"], "role": "Admin"})
+            if not user:
+                return {"data": "", "code": 401, "message": "User is not found"}
+
+            # Attach user info to the global `g` object
+            g.current_user = {
+                "email": user["email"],
+                "role": user["role"],
+                "_id": str(user["_id"]),
+                "name": user.get("name")
+            }
+
+            return f(*args, **kwargs)
+        except Exception as e:
+            return {"data": "", "code": 401, "message": str(e)}
+
+    return decorated_function_admin
+
 def validate_token(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -56,7 +95,7 @@ def validate_token(f):
                 return {"data": "", "code": 401, "message": "Token is invalid"}
 
             # Find the user in the database
-            user = db.users.find_one({"email": data["email"]})
+            user = user_database.find_one({"email": data['info']["email"], "role": "Student"})
             if not user:
                 return {"data": "", "code": 401, "message": "User is not found"}
 
