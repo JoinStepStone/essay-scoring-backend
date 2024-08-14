@@ -12,7 +12,8 @@ class SimulationSchema(BaseModel):
     startTime: datetime
     endTime: datetime
     duration: Optional[str] = None  # Store duration as a string
-    filePath: str
+    fileId: str
+    fileName: str
     classCode: str
     status: bool = True
     participants: int = 0

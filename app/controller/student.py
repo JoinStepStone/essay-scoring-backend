@@ -27,11 +27,13 @@ def simulationSelectionController(data):
         # Validate incoming data using Pydantic schema
         simulationData = UserSimulationSchema(**data)
         found = list(user_simulation_database.find(data))
-        print("found",'\n',found,'\n')
-        # result = user_simulation_database.insert_one(simulationData.dict())
+        if found:
+            return "", False, "You are already registered"
 
-        # if result:
-        return "", True, "Data inserted successfully"
+        result = user_simulation_database.insert_one(simulationData.dict())
+
+        if result:
+            return "", True, "Data inserted successfully"
 
     except ValidationError as e:
         return str(e), False, "Something went bad"
@@ -82,6 +84,7 @@ def simulationDetailController(data):
 
 def updateUserSimulationController(data):
     try:
+        print('\n', data, '\n')
         # Validate using Pydantic schema
         simulationData = UserSimulationSchema(**data)
         # Define the filter to locate the document to update

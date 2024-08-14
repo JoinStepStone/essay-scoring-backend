@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_pymongo import PyMongo
 from flask_cors import CORS, cross_origin
+from gridfs import GridFS
 
 UPLOAD_FOLDER = './app/uploads/'
 
@@ -13,6 +14,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # mongodb database
 mongodb_client = PyMongo(app)
 db = mongodb_client.db
+gridFileStorage = GridFS(db)
 
 user_simulation_database = db.usersimulation
 simulation_database = db.simulation

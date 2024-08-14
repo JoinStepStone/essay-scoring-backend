@@ -4,10 +4,89 @@ from functools import wraps
 from app import user_database, app
 import datetime
 import os
+import openpyxl
+from openpyxl.styles import Font, PatternFill
+import pandas as pd
+from openpyxl.styles.colors import Color
 
 # Secret key for JWT encoding/decoding
 SECRET_KEY = "your_secret_key_here"
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'csv', 'xlsx'}
+
+def save_parsed_data_to_excel(parsed_data, output_file_path):
+    wb = openpyxl.Workbook()
+    for sheet_name, sheet_data in parsed_data.items():
+        ws = wb.create_sheet(title=sheet_name)
+        for row_idx, row in enumerate(sheet_data):
+            for col_idx, cell_data in enumerate(row):
+                cell = ws.cell(row=row_idx + 1, column=col_idx + 1, value=cell_data["value"])
+                
+                # Set font properties
+                if cell_data["font"]:
+                    font_color = None
+                    if cell_data["font"]["color"]:
+                        if isinstance(cell_data["font"]["color"], str):
+                            font_color = Color(rgb=cell_data["font"]["color"])
+                        elif hasattr(cell_data["font"]["color"], 'rgb'):
+                            font_color = Color(rgb=cell_data["font"]["color"].rgb)
+                    
+                    cell.font = Font(
+                        name=cell_data["font"]["name"],
+                        size=cell_data["font"]["size"],
+                        bold=cell_data["font"]["bold"],
+                        italic=cell_data["font"]["italic"],
+                        color=font_color
+                    )
+                
+                # Set fill properties
+                if cell_data["fill"]:
+                    fill_color = None
+                    if cell_data["fill"]["bgColor"]:
+                        if isinstance(cell_data["fill"]["bgColor"], str):
+                            fill_color = Color(rgb=cell_data["fill"]["bgColor"])
+                        elif hasattr(cell_data["fill"]["bgColor"], 'rgb'):
+                            fill_color = Color(rgb=cell_data["fill"]["bgColor"].rgb)
+                    
+                    # Only set fill if color is available
+                    if fill_color:
+                        cell.fill = PatternFill(
+                            fill_type=cell_data["fill"]["fill_type"],
+                            fgColor=fill_color
+                        )
+
+    wb.save(output_file_path)
+
+def parse_csv(file_path):
+    df = pd.read_csv(file_path)
+    return df.to_dict(orient='records')
+
+def parse_excel(file_path):
+    wb = openpyxl.load_workbook(file_path, data_only=True)
+    all_data = {}
+    for sheet in wb.sheetnames:
+        sheet_data = []
+        ws = wb[sheet]
+        for row in ws.iter_rows():
+            row_data = []
+            for cell in row:
+                cell_info = {
+                    "value": cell.value,
+                    "font": {
+                        "name": cell.font.name, 
+                        "size": cell.font.size,
+                        "bold": cell.font.bold,
+                        "italic": cell.font.italic,
+                        "color": cell.font.color.rgb if cell.font.color else None
+                    },
+                    "fill": {
+                        "fill_type": cell.fill.fill_type,
+                        "bgColor": cell.fill.bgColor.rgb if cell.fill.bgColor else None
+                    }
+                }
+                row_data.append(cell_info)
+            sheet_data.append(row_data)
+        all_data[sheet] = sheet_data
+    return all_data
 
 def upload_file(file):
     fileDummy = file.filename.rsplit('.', 1)[0]

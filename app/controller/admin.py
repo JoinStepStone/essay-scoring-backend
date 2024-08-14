@@ -27,10 +27,17 @@ def getAllTheStuedents():
             user['_id'] = str(user['_id']) 
         users = [UserSchema(**user).dict() for user in users]
 
+        scores= []
+        examsTaken = 0
         for user in users:
             userSimulations = list(user_simulation_database.find({"userId": user["id"]}))
             if(len(userSimulations)):
-                print("avgScore")
+                for userSimulation in userSimulations:
+                    if(userSimulation["grade"]):
+                        examsTaken += 1
+                        scores.append(float(userSimulation["grade"]))
+                        user["examTaken"] = examsTaken
+                        user["avgScore"] =  round(sum(scores) / examsTaken, 2)
             else:
                 user["avgScore"] = 0
                 user["examTaken"] = 0
@@ -62,6 +69,7 @@ def getAllTheSimulations():
 
 def getTheSimulationDetails(data): 
     try:
+   
         simulation =list(simulation_database.find({"_id": ObjectId(data['simulationId'])},{"_id": 0}))
         if not simulation:
             return "", False, "No simulation found"
