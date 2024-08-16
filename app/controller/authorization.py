@@ -27,7 +27,7 @@ def signInController(data):
         user = data
     
         # Check if the user with the same email already exists
-        existing_user = user_database.find_one({"email": user["email"]})
+        existing_user = user_database.find_one({"email": user["email"], "password": user["password"] })
         if existing_user:
             existing_user['_id'] = str(existing_user['_id'])
             tokenized = generate_access_token(existing_user)
