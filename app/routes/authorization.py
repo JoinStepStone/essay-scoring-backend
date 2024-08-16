@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from app import app, db
 from ..controller.authorization import signUpController, signInController
-
+import os
 
 @app.route('/', methods=['GET'])
 def Home():
@@ -26,7 +26,7 @@ def login():
 @app.route('/test_connection', methods=['GET'])
 def test_connection():
     try:
-        print("\n", "TESTING", "\n")
+        print("\n", "TESTING", os.getenv("MONGO_URI"), "\n")
         # Perform a test query to check the connection
         server_status = db.command("serverStatus")
         return jsonify({"status": "Connection successful", "code": 200, "server_info": server_status})
