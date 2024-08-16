@@ -26,7 +26,7 @@ def login():
 @app.route('/test_connection', methods=['GET'])
 def test_connection():
     try:
-        print("\n", "TESTING", os.getenv("MONGO_URI"), "\n")
+        print("\n", "TESTING", "\n")
         # Perform a test query to check the connection
         server_status = db.command("serverStatus")
         return jsonify({"status": "Connection successful", "code": 200, "server_info": server_status})

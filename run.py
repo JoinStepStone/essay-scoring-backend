@@ -1,5 +1,4 @@
-from app import app, db
-from flask import jsonify
+from app import app
 # source env/bin/activate
 
 
