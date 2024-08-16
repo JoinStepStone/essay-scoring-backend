@@ -24,12 +24,16 @@ def simulationByClassCodeController(data):
 
 def simulationSelectionController(data):
     try:
+        print('\n',"1",data,'\n')
         # Validate incoming data using Pydantic schema
         simulationData = UserSimulationSchema(**data)
         found = list(user_simulation_database.find(data))
+
+        print('\n',"2",'\n')
         if found:
             return "", False, "You are already registered"
 
+        print('\n',"3",'\n')
         result = user_simulation_database.insert_one(simulationData.dict())
 
         if result:
@@ -126,7 +130,11 @@ def updateUserSimulationController(data):
                 print("Document matched but no changes were made (maybe the data was already the same).")
             return str(e), False, "Something went bad"
         
+        if data['fileName']:
+            return data['fileName'], True, "Successfully updated the record"
+
         return "", True, "Successfully updated the record"
+
     except ValidationError as e:
         return str(e), False, "Something went bad"
 

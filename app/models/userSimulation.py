@@ -15,7 +15,8 @@ class UserSimulationSchema(BaseModel):
     endTime: Optional[datetime] = None
     duration: Optional[str] = None  
     grade: Optional[str] = None
-    filePath: Optional[str] = None
+    fileId: Optional[str] = None
+    fileName: Optional[str] = None
     userId: str 
     simulationId: str 
 

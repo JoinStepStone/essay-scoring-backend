@@ -6,6 +6,137 @@ from ..models.user import UserSchema
 from ..models.userSimulation import UserSimulationSchema
 from ..models.simulation import SimulationSchema
 
+def getSimulationById(data):
+    try:
+        simulation = list(simulation_database.find({"_id": ObjectId(data["simulationId"])}))[0]
+        if simulation:
+            simulation['_id'] = str(simulation['_id']) 
+
+            return simulation, True, "Data fetched successfully"
+
+        return [], False, "No student is registred under this name"
+
+    except ValidationError as e:
+        return str(e), False, "Something went bad"
+
+def getAdminById():
+    try:
+        users = list(user_database.find({"role": "Admin"}))
+        if users:
+            for user in users:
+                user['_id'] = str(user['_id']) 
+
+            return users, True, "Data fetched successfully"
+
+        return [], False, "No student is registred under this name"
+
+    except ValidationError as e:
+        return str(e), False, "Something went bad"
+
+def updateAdminById(data):
+    try:
+        user = UserSchema(**data)
+
+        filter_query_simulation = {
+            "_id": ObjectId(user.id)
+        }
+        # Define the update query
+        update_query_simulation = {
+            "$set": user.dict(exclude_unset=True)
+        }
+        
+        # Update the document
+        result1 = user_database.update_one(filter_query_simulation, update_query_simulation)
+
+        if result1.matched_count == 0:
+            if result1.modified_count > 0:
+                print("Document updated successfully.")
+            else:
+                print("Document matched but no changes were made (maybe the data was already the same).")
+            return str(e), False, "Something went bad"
+
+        return "", True, "Data updated successfully"
+
+
+    except ValidationError as e:
+        return str(e), False, "Something went bad"
+
+def updateStudentById(data):
+    try:
+        user = UserSchema(**data)
+
+        filter_query_simulation = {
+            "_id": ObjectId(user.id)
+        }
+        # Define the update query
+        update_query_simulation = {
+            "$set": user.dict(exclude_unset=True)
+        }
+        
+        # Update the document
+        result1 = user_database.update_one(filter_query_simulation, update_query_simulation)
+
+        if result1.matched_count == 0:
+            if result1.modified_count > 0:
+                print("Document updated successfully.")
+            else:
+                print("Document matched but no changes were made (maybe the data was already the same).")
+            return str(e), False, "Something went bad"
+
+        return "", True, "Data updated successfully"
+
+
+    except ValidationError as e:
+        return str(e), False, "Something went bad"
+
+def getStudentById(data):
+    try:
+        users = list(user_database.find({"role": "Student", "_id": ObjectId(data["studentId"])}, {"password": 0}))
+        if users:
+            for user in users:
+                user['_id'] = str(user['_id']) 
+
+            return users, True, "Data fetched successfully"
+
+        return [], False, "No student is registred under this name"
+
+    except ValidationError as e:
+        return str(e), False, "Something went bad"
+
+def updateSimulationController(data):
+    try:
+
+        simulation = SimulationSchema(**data)
+
+        print("\n", simulation,"\n")
+        filter_query_simulation = {
+            "_id": ObjectId(simulation.id)
+        }
+        # Define the update query
+        update_query_simulation = {
+            "$set": simulation.dict(exclude_unset=True)
+        }
+        
+        # Update the document
+        result1 = simulation_database.update_one(filter_query_simulation, update_query_simulation)
+
+        if result1.matched_count == 0:
+            if result1.modified_count > 0:
+                print("Document updated successfully.")
+            else:
+                print("Document matched but no changes were made (maybe the data was already the same).")
+            return str(e), False, "Something went bad"
+        # # Validate incoming data using Pydantic schema
+        # simulationData = SimulationSchema(**data)
+        # result = simulation_database.insert_one(simulationData.dict())
+
+        # if result:
+        return "", True, "Data inserted successfully"
+
+    except ValidationError as e:
+        print("\n", e,"\n")
+        return str(e), False, "Something went bad"
+
 def createSimulationController(data):
     try:
 

@@ -1,6 +1,6 @@
 from flask import request, jsonify
 import os
-from app import app
+from app import app, gridFileStorage
 from ..middleware.middleware import allowed_file, upload_file, validate_token
 from ..controller.student import updateUserSimulationController, getSimulationSelectedController, simulationSelectionController, simulationByClassCodeController, simulationDetailController
 
@@ -54,14 +54,17 @@ def simulation_start():
         return {'data': '', "code": 400, "message": "No files are found"}
 
     if file and allowed_file(file.filename):
-        filepath = upload_file(file)
+        # filepath = upload_file(file)
+        grid_out = gridFileStorage.put(file, filename=file.filename)
+     
         objectData = {
             "status": request.form.get('status'),
             "sharingScore": request.form.get('sharingScore'),
             "grade": request.form.get('grade'),
             "userId": request.form.get('userId'),
             "simulationId": request.form.get('simulationId'),
-            "filePath": filepath,
+            "fileId": str(grid_out),
+            "fileName": file.filename,
             "startTime": request.form.get('startTime'),
             "endTime": request.form.get('endTime'),
         }

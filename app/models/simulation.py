@@ -20,16 +20,38 @@ class SimulationSchema(BaseModel):
 
     @root_validator(pre=True)
     def calculate_duration(cls, values):
-        start_time = values.get('startTime')
-        end_time = values.get('endTime')
-        if start_time and end_time:
-            if isinstance(start_time, str):
-                start_time = datetime.fromisoformat(start_time)
-            if isinstance(end_time, str):
-                end_time = datetime.fromisoformat(end_time)
-            
-            duration = end_time - start_time
-            values['duration'] = str(duration)  # Convert timedelta to string
+        try:
+            start_time = values.get('startTime')
+            end_time = values.get('endTime')
+            if start_time and end_time:
+                if isinstance(start_time, str):
+                    start_time = datetime.fromisoformat(start_time)
+                if isinstance(end_time, str):
+                    end_time = datetime.fromisoformat(end_time)
+                
+                duration = end_time - start_time
+                values['duration'] = str(duration)  # Convert timedelta to string
+        except:
+            start_time = values.get('startTime')
+            end_time = values.get('endTime')
+            date_format = '%a, %d %b %Y %H:%M:%S %Z'
+
+            if start_time and end_time:
+                if isinstance(start_time, str):
+                    try:
+                        start_time = datetime.strptime(start_time, date_format)
+                    except ValueError:
+                        raise ValueError(f"Invalid date format for startTime: {start_time}")
+                if isinstance(end_time, str):
+                    try:
+                        end_time = datetime.strptime(end_time, date_format)
+                    except ValueError:
+                        raise ValueError(f"Invalid date format for endTime: {end_time}")
+                
+                duration = end_time - start_time
+                values['duration'] = str(duration)  # Convert timedelta to string
+                values['startTime'] = start_time  # Ensure it's stored as datetime
+                values['endTime'] = end_time  # Ensure it's stored as datetime
         return values
 
     class Config:
