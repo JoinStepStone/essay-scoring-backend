@@ -29,6 +29,6 @@ def test_connection():
         print("\n", "TESTING", "\n")
         # Perform a test query to check the connection
         server_status = db.command("serverStatus")
-        return jsonify({"status": "Connection successful", "server_info": server_status}), 200
+        return jsonify({"status": "Connection successful", "code": 200, "server_info": server_status})
     except Exception as e:
-        return jsonify({"status": "Connection failed", "error": str(e)}), 500
+        return jsonify({"status": "Connection failed", "code": 500, "error": str(e)})
