@@ -165,6 +165,7 @@ def updateStudentById(data):
     except ValidationError as e:
         return str(e), False, "Something went bad"
 
+
 def getStudentById(data):
     try:
         users = list(user_database.find({"role": "Student", "_id": ObjectId(data["studentId"])}, {"password": 0}))

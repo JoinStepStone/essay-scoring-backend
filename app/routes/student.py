@@ -2,7 +2,33 @@ from flask import request, jsonify
 import os
 from app import app, gridFileStorage
 from ..middleware.middleware import allowed_file, upload_file, validate_token
-from ..controller.student import updateUserSimulationController, getSimulationSelectedController, simulationSelectionController, simulationByClassCodeController, simulationDetailController
+from ..controller.student import (
+    updateUserSimulationController, 
+    getSimulationSelectedController, 
+    simulationSelectionController, 
+    simulationByClassCodeController, 
+    simulationDetailController,
+    getMeController,
+    updateMeController
+    )
+
+
+@app.route('/student/updateMe', methods=['POST'])
+@validate_token
+def update_me():
+    data = request.json
+    response, success, message = updateMeController(data)
+    if success:
+        return {"data": response, "code": 201, "message": message}
+
+@app.route('/student/getMe', methods=['POST'])
+@validate_token
+def get_Me():
+    data = request.json
+    response, success, message = getMeController(data)
+    if success:
+        return jsonify({"data": response, "code": 201, "message": message})
+    return jsonify({"error": response, "code": 400, "message": message})
 
 @app.route('/student/classCodeSimulation', methods=['POST'])
 @validate_token

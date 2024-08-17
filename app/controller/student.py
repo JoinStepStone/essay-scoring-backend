@@ -6,6 +6,52 @@ from ..models.userSimulation import UserSimulationSchema
 from ..models.user import UserSchema
 from ..models.simulation import SimulationSchema
 
+def updateMeController(data):
+    try:
+        user = UserSchema(**data)
+
+        filter_query_simulation = {
+            "_id": ObjectId(user.id)
+        }
+        # Define the update query
+        update_query_simulation = {
+            "$set": user.dict(exclude_unset=True)
+        }
+        
+        # Update the document
+        result1 = user_database.update_one(filter_query_simulation, update_query_simulation)
+
+        if result1.matched_count == 0:
+            if result1.modified_count > 0:
+                print("Document updated successfully.")
+            else:
+                print("Document matched but no changes were made (maybe the data was already the same).")
+            return str(e), False, "Something went bad"
+
+        return "", True, "Data updated successfully"
+
+
+    except ValidationError as e:
+        return str(e), False, "Something went bad"
+
+def getMeController(data):
+    try:
+        users = list(user_database.find(
+            {
+                "role": "Student",
+                "_id": ObjectId(data['userId'])
+            }
+        ))
+
+        if not users:
+            return "", False, "No student found under this name"
+
+        users[0]["_id"] = str(users[0]["_id"])
+        return users[0], True, "Successfully fetched"
+
+    except ValidationError as e:
+        return str(e), False, "Something went bad"
+
 def simulationByClassCodeController(data):
     try:
         simulations = list(simulation_database.find(
