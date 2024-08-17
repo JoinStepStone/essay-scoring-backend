@@ -185,7 +185,6 @@ def updateSimulationController(data):
 
         simulation = SimulationSchema(**data)
 
-        print("\n", simulation,"\n")
         filter_query_simulation = {
             "_id": ObjectId(simulation.id)
         }
@@ -211,7 +210,6 @@ def updateSimulationController(data):
         return "", True, "Data inserted successfully"
 
     except ValidationError as e:
-        print("\n", e,"\n")
         return str(e), False, "Something went bad"
 
 def createSimulationController(data):

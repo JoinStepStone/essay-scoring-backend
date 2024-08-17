@@ -119,7 +119,6 @@ def update_uploaded_file_route():
         # Convert file_id from string to ObjectId
         file_id = ObjectId(request.form.get('fileId'))
             
-        print("\n", file_id,"\n")
         # Delete the old file
         gridFileStorage.delete(ObjectId(file_id))
         grid_out = gridFileStorage.put(file, filename=file.filename)
@@ -174,7 +173,6 @@ def download_simulation_file(file_id):
     # Retrieve the file by its ID
     grid_out = gridFileStorage.get(ObjectId(file_id))
     
-    print('\n',id,grid_out,'\n')
     if not grid_out:
         return {'data': '', "code": 400, "message": "No files are found"}
     

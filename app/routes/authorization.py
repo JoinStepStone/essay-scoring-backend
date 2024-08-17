@@ -40,7 +40,6 @@ def custom_json_serializer(obj):
 @app.route('/test_connection', methods=['GET'])
 def test_connection():
     try:
-        print("\n", "TESTING", "\n")
         # Perform a test query to check the connection
         server_status = db.command("serverStatus")
         return jsonify({"status": "Connection successful", "code": 200, "server_info": json.loads(json_util.dumps(server_status))})

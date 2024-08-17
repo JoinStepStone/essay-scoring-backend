@@ -70,16 +70,13 @@ def simulationByClassCodeController(data):
 
 def simulationSelectionController(data):
     try:
-        print('\n',"1",data,'\n')
         # Validate incoming data using Pydantic schema
         simulationData = UserSimulationSchema(**data)
         found = list(user_simulation_database.find(data))
 
-        print('\n',"2",'\n')
         if found:
             return "", False, "You are already registered"
 
-        print('\n',"3",'\n')
         result = user_simulation_database.insert_one(simulationData.dict())
 
         if result:
@@ -134,7 +131,6 @@ def simulationDetailController(data):
 
 def updateUserSimulationController(data):
     try:
-        print('\n', data, '\n')
         # Validate using Pydantic schema
         simulationData = UserSimulationSchema(**data)
         # Define the filter to locate the document to update
