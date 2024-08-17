@@ -1,10 +1,42 @@
 from flask import request, send_file
-import os
-from app import app, gridFileStorage
-from ..middleware.middleware import allowed_file, upload_file, validate_token_admin
-from ..controller.admin import createSimulationController, getAllTheStuedents, getAllTheSimulations, getTheSimulationDetails, getStudentById, updateStudentById,getAdminById, updateAdminById, getSimulationById, updateSimulationController
 from io import BytesIO
 from bson import ObjectId
+from app import app, gridFileStorage
+from ..middleware.middleware import allowed_file, upload_file, validate_token_admin
+from ..controller.admin import (
+    createSimulationController, 
+    getAllTheStuedents, 
+    getAllTheSimulations, 
+    getTheSimulationDetails, 
+    getStudentById, 
+    updateStudentById,
+    getAdminById, 
+    updateAdminById, 
+    getSimulationById, 
+    updateSimulationController,
+    deleteStudentById,
+    deleteSimulationById
+    )
+
+@app.route('/admin/deleteSimulationById', methods=['POST'])
+@validate_token_admin
+def delete_simulation_by_Id():
+    data = request.json
+    response, success, message = deleteSimulationById(data)
+    if success:
+        return {"data": response, "code": 201, "message": message}
+
+    return {"error": response, "code": 400, "message": message}
+
+@app.route('/admin/deleteStudentById', methods=['POST'])
+@validate_token_admin
+def delete_student_by_Id():
+    data = request.json
+    response, success, message = deleteStudentById(data)
+    if success:
+        return {"data": response, "code": 201, "message": message}
+
+    return {"error": response, "code": 400, "message": message}
 
 @app.route('/admin/getSimulationById', methods=['POST'])
 @validate_token_admin
@@ -89,7 +121,7 @@ def update_uploaded_file_route():
             
         print("\n", file_id,"\n")
         # Delete the old file
-        gridFileStorage.delete(file_id)
+        gridFileStorage.delete(ObjectId(file_id))
         grid_out = gridFileStorage.put(file, filename=file.filename)
         objectData = {
             "_id": request.form.get('_id'),

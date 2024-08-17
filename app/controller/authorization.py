@@ -25,7 +25,6 @@ def signUpController(data):
 def signInController(data):
     try:
         user = data
-    
         # Check if the user with the same email already exists
         existing_user = user_database.find_one({"email": user["email"], "password": user["password"] })
         if existing_user:

@@ -5,6 +5,82 @@ from app import user_database,user_simulation_database, simulation_database
 from ..models.user import UserSchema
 from ..models.userSimulation import UserSimulationSchema
 from ..models.simulation import SimulationSchema
+from app import gridFileStorage
+
+def deleteSimulationById(data):
+    try:
+        delete_sim = False
+        delete_us_sim = False
+        # Delete the student by ID
+        simulation = list(simulation_database.find({"_id": ObjectId(data["simulationId"])}))
+        file_id = simulation[0]["fileId"]
+        gridFileStorage.delete(ObjectId(file_id))
+        delete_simulation = simulation_database.delete_one({"_id": ObjectId(data["simulationId"])})
+
+        if delete_simulation.deleted_count > 0:
+            delete_sim = True
+
+        user_simulation = list(user_simulation_database.find({"simulationId": data["simulationId"]}))
+
+        if(user_simulation):
+            delete_user_simulation = user_simulation_database.delete_one({"simulationId": data["simulationId"]})
+
+            if delete_user_simulation.deleted_count > 0:
+                return "", True, "Successfully deleted simulaion and its students"
+            if delete_sim:
+                return "", True, "Successfully deleted simulaion but not its students"
+            else:
+                return "", False, "Something went bad"
+
+        
+        if delete_sim:
+            return "", True, "Successfully deleted simulaion"
+        else:
+            return "", False, "Something went bad"
+
+    except ValidationError as e:
+        return str(e), False, "Something went bad"
+
+def deleteStudentById(data):
+    try:
+        delete_us = False
+        delete_us_sim = False
+    
+        delete_user = user_database.delete_one({"_id": ObjectId(data["userId"])})
+        if delete_user.deleted_count > 0:
+            delete_us = True
+
+        user_simulation = list(user_simulation_database.find({"userId": data["userId"]}))
+        if(user_simulation):
+            simulation_id = user_simulation[0]["simulationId"]
+            file_id = user_simulation[0]["fileId"]
+
+            gridFileStorage.delete(ObjectId(file_id))
+            delete_user_simulation = user_simulation_database.delete_one({"userId": data["userId"]})
+            if delete_user_simulation.deleted_count > 0:
+                delete_us_sim = True
+
+            simulation = list(simulation_database.find({"_id": ObjectId(simulation_id)}))[0]
+            filter_query_simulation = {
+                "_id": ObjectId(simulation_id)
+            }
+            update_query_simulation = {
+                "$set": {"participants" : simulation["participants"] - 1}
+            }
+            result1 = simulation_database.update_one(filter_query_simulation, update_query_simulation)
+
+            if delete_us_sim:
+                return {}, True, "Student record deleted successfully and its internal simulations"
+            else:
+                return "", True, "Successfully deleted student"
+        if delete_us:
+            return "", True, "Successfully deleted student"
+        else:
+            return "", False, "Something went bad"
+
+
+    except ValidationError as e:
+        return str(e), False, "Something went bad"
 
 def getSimulationById(data):
     try:
