@@ -144,6 +144,8 @@ def updateUserSimulationController(data):
             "$set": simulationData.dict(exclude_unset=True)
         }
         
+        gradeCheck = list(user_simulation_database.find(filter_query))[0]
+        print("\n", gradeCheck, "\n")
         # Update the document
         result = user_simulation_database.update_one(filter_query, update_query)
 
@@ -152,21 +154,22 @@ def updateUserSimulationController(data):
             {"participants": 1}
         ))
         
-        participants = result1[0]["participants"] + 1
+        if not (gradeCheck["grade"]):
+            participants = result1[0]["participants"] + 1
         
-        filter_query_simulation = {
-            "_id": ObjectId(simulationData.simulationId)
-        }
-        # Define the update query
-        update_query_simulation = {
-            "$set": {"participants": participants}
-        }
+            filter_query_simulation = {
+                "_id": ObjectId(simulationData.simulationId)
+            }
+            # Define the update query
+            update_query_simulation = {
+                "$set": {"participants": participants}
+            }
+            
+            # Update the document
+            result1 = simulation_database.update_one(filter_query_simulation, update_query_simulation)
         
-        # Update the document
-        result1 = simulation_database.update_one(filter_query_simulation, update_query_simulation)
-        
-        if result1.matched_count == 0 or result.matched_count == 0:
-            if result1.modified_count > 0 or result.modified_count > 0:
+        if result.matched_count == 0:
+            if result.modified_count > 0:
                 print("Document updated successfully.")
             else:
                 print("Document matched but no changes were made (maybe the data was already the same).")
