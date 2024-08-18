@@ -233,9 +233,10 @@ def getAllTheStuedents():
             user['_id'] = str(user['_id']) 
         users = [UserSchema(**user).dict() for user in users]
 
-        scores= []
-        examsTaken = 0
         for user in users:
+            scores= []
+            examsTaken = 0
+            maxScore = 0
             userSimulations = list(user_simulation_database.find({"userId": user["id"]}))
             if(len(userSimulations)):
                 for userSimulation in userSimulations:
@@ -244,9 +245,13 @@ def getAllTheStuedents():
                         scores.append(float(userSimulation["grade"]))
                         user["examTaken"] = examsTaken
                         user["avgScore"] =  round(sum(scores) / examsTaken, 2)
+                        if(float(userSimulation["grade"]) > maxScore):
+                            maxScore = float(userSimulation["grade"])
+                user["maxScore"] = maxScore
             else:
                 user["avgScore"] = 0
                 user["examTaken"] = 0
+                user["maxScore"] = 0
 
         if users:
             return users, True, "Data fetched successfully"
