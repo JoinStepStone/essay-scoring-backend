@@ -70,17 +70,21 @@ def simulationByClassCodeController(data):
 
 def simulationSelectionController(data):
     try:
+
         # Validate incoming data using Pydantic schema
-        simulationData = UserSimulationSchema(**data)
-        found = list(user_simulation_database.find(data))
+        simulation = list(simulation_database.find( {"classCode" : data["classCode"] }))
+        if simulation:
+            found = list(user_simulation_database.find({"simulationId":simulation[0]["_id"], "userId": data["userId"]}))
+            userSimulatio = UserSimulationSchema(**{"simulationId":str(simulation[0]["_id"]), "userId": data["userId"]})
+            if found:
+                return "", False, "You are already registered"
 
-        if found:
-            return "", False, "You are already registered"
+            result = user_simulation_database.insert_one(userSimulatio.dict())
 
-        result = user_simulation_database.insert_one(simulationData.dict())
+            if result:
+                return "", True, "Data inserted successfully"
 
-        if result:
-            return "", True, "Data inserted successfully"
+        return "", False, "No simulation found"
 
     except ValidationError as e:
         return str(e), False, "Something went bad"

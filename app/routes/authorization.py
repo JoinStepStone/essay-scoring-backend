@@ -6,10 +6,18 @@ from datetime import datetime
 import json
 from bson import json_util, Timestamp
 from bson.objectid import ObjectId
+from ..middleware.middleware import validate_token_duration
 
 @app.route('/', methods=['GET'])
 def Home():
     return jsonify({"error": "RUNNING", "code": 400})
+
+@app.route('/checkAuth', methods=['GET'])
+def check_auth():
+    response, success, message = validate_token_duration(request)
+    if success:
+        return jsonify({"data": response, "code": 201, "message": message})
+    return jsonify({"error": response, "code": 400, "message": message})
 
 @app.route('/signUp', methods=['POST'])
 def signUp():

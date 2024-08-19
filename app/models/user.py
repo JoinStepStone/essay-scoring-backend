@@ -11,9 +11,9 @@ class UserSchema(BaseModel):
     password: Optional[str] = None
     university: str
     gradYear: str
-    ethnicity: str
-    race: str
-    gender: str
+    ethnicity: Optional[str] = None
+    race: Optional[str] = None
+    gender: Optional[str] = None
     role: str = "Student"
 
     class Config:

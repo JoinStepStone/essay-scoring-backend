@@ -1,10 +1,11 @@
 from pydantic import ValidationError
 from datetime import datetime
 from bson import ObjectId
-from app import user_database,user_simulation_database, simulation_database
+from app import user_database,user_simulation_database, simulation_database, name_storage_database
 from ..models.user import UserSchema
 from ..models.userSimulation import UserSimulationSchema
 from ..models.simulation import SimulationSchema
+from ..models.nameStorage import NameStorageSchema
 from app import gridFileStorage
 
 def deleteSimulationById(data):
@@ -217,7 +218,32 @@ def createSimulationController(data):
 
         # Validate incoming data using Pydantic schema
         simulationData = SimulationSchema(**data)
-        result = simulation_database.insert_one(simulationData.dict())
+        dictSim = simulationData.dict() 
+        nameStr = list(name_storage_database.find({}))
+        if not nameStr:
+            nameStorageData = NameStorageSchema(**{
+                "category": [dictSim["category"]],
+                "simulationName":[dictSim["simulationName"]],
+                "organizationName":[dictSim["organizationName"]],
+            })
+            name_storage_database.insert_one(nameStorageData.dict())
+        else:
+            # Check if the value is not already in the list before appending
+            if dictSim["category"] not in nameStr[0]["category"]:
+                nameStr[0]["category"].append(dictSim["category"])
+
+            if dictSim["simulationName"] not in nameStr[0]["simulationName"]:
+                nameStr[0]["simulationName"].append(dictSim["simulationName"])
+
+            if dictSim["organizationName"] not in nameStr[0]["organizationName"]:
+                nameStr[0]["organizationName"].append(dictSim["organizationName"])
+
+            nameStr[0]["_id"] = str(nameStr[0]["_id"])
+            nameStorageData = NameStorageSchema(**nameStr[0])
+        
+            name_storage_database.update_one({"_id": ObjectId(nameStr[0]["_id"])}, { "$set": nameStorageData.dict() })
+        
+        result = simulation_database.insert_one(dictSim)
 
         if result:
             return "", True, "Data inserted successfully"
@@ -272,6 +298,20 @@ def getAllTheSimulations():
 
         if simulations:
             return simulations, True, "Data fetched successfully"
+        else:
+            return [], True, "Data fetched successfully"
+
+    except ValidationError as e:
+        return str(e), False, "Something went bad"
+
+def getSuggestionListsController():
+    try:
+
+        suggList = list(name_storage_database.find({},{"id":0}))
+
+        if suggList:
+            suggList[0]["_id"] = str(suggList[0]["_id"])
+            return suggList[0], True, "Data fetched successfully"
         else:
             return [], True, "Data fetched successfully"
 

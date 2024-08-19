@@ -15,7 +15,8 @@ from ..controller.admin import (
     getSimulationById, 
     updateSimulationController,
     deleteStudentById,
-    deleteSimulationById
+    deleteSimulationById,
+    getSuggestionListsController
     )
 
 @app.route('/admin/deleteSimulationById', methods=['POST'])
@@ -109,19 +110,25 @@ def get_all_simulations():
 @app.route('/admin/update/uploadFile', methods=['POST'])
 @validate_token_admin
 def update_uploaded_file_route():
+    file_found = False
     if 'file' not in request.files:
-        return {'data': '', "code": 400, "message": "No files are found"}
-    file = request.files['file']
-    if file.filename == '':
-        return {'data': '', "code": 400, "message": "No files are found"}
+        obj = {'data': '', "code": 400, "message": "No files are found"}
+    else:
+        file = request.files['file']
+        if file.filename == '':
+            obj = {'data': '', "code": 400, "message": "No files are found"}
 
-    if file and allowed_file(file.filename):
-        # Convert file_id from string to ObjectId
-        file_id = ObjectId(request.form.get('fileId'))
-            
-        # Delete the old file
-        gridFileStorage.delete(ObjectId(file_id))
-        grid_out = gridFileStorage.put(file, filename=file.filename)
+        if file and allowed_file(file.filename):
+
+            file_found = True
+            # Convert file_id from string to ObjectId
+            file_id = ObjectId(request.form.get('fileId'))
+                
+            # Delete the old file
+            gridFileStorage.delete(ObjectId(file_id))
+            grid_out = gridFileStorage.put(file, filename=file.filename)
+    
+    if file_found:
         objectData = {
             "_id": request.form.get('_id'),
             "category": request.form.get('category'),
@@ -134,9 +141,20 @@ def update_uploaded_file_route():
             "fileName": file.filename,
             "participants": request.form.get('participants')
         }
-        response, success, message = updateSimulationController(objectData)
-        if success:
-            return {"data": response,  "code": 201, "message": message}
+    else:
+        objectData = {
+            "_id": request.form.get('_id'),
+            "category": request.form.get('category'),
+            "simulationName": request.form.get('simulationName'),
+            "organizationName": request.form.get('organizationName'),
+            "startTime": request.form.get('startTime'),
+            "endTime": request.form.get('endTime'),
+            "classCode": request.form.get('classCode'),
+            "participants": request.form.get('participants')
+        }
+    response, success, message = updateSimulationController(objectData)
+    if success:
+        return {"data": response,  "code": 201, "message": message}
 
     return {"error": response, "code": 400, "message": message}
 
@@ -190,6 +208,15 @@ def download_simulation_file(file_id):
 def get_simulation_details():
     data = request.json
     response, success, message = getTheSimulationDetails(data)
+    if success:
+        return {"data": response, "code": 201, "message": message}
+
+    return {"error": response, "code": 400, "message": message}
+
+@app.route('/admin/getSuggestionLists', methods=['GET'])
+@validate_token_admin
+def get_suggestion_lists_details():
+    response, success, message = getSuggestionListsController()
     if success:
         return {"data": response, "code": 201, "message": message}
 

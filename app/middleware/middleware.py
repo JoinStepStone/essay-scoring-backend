@@ -115,6 +115,27 @@ def generate_access_token(info, expires_in="12h"):
 
     return token
 
+def validate_token_duration(request):
+    try:
+        # Extract the token from the Authorization header
+        auth_header = request.headers.get('Authorization', None)
+        if auth_header is None:
+            return {"data": "", "code": 401, "message": "Header does not have token"}
+
+        token = auth_header.split(" ")[1]
+        
+        # Decode the JWT token
+        try:
+            jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        except jwt.ExpiredSignatureError:
+            return "", False, "Token has been expired"
+        except jwt.InvalidTokenError:
+            return "", False, "Token is invalid"
+
+        return "", True, "Token is valid"
+    except Exception as e:
+        return "",False, str(e)
+
 def validate_token_admin(f):
     @wraps(f)
     def decorated_function_admin(*args, **kwargs):

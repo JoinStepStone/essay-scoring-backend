@@ -25,6 +25,7 @@ gridFileStorage = GridFS(db)
 user_simulation_database = db.usersimulation
 simulation_database = db.simulation
 user_database = db.user
+name_storage_database = db.storage
 
 from .routes.authorization import *
 from .routes.admin import *
