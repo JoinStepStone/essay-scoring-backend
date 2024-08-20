@@ -1,5 +1,5 @@
 from flask import request, jsonify
-import os
+from bson import ObjectId
 from app import app, gridFileStorage
 from ..middleware.middleware import allowed_file, upload_file, validate_token
 from ..controller.student import (
@@ -9,9 +9,31 @@ from ..controller.student import (
     simulationByClassCodeController, 
     simulationDetailController,
     getMeController,
-    updateMeController
+    updateMeController,
+    deleteFileController,
+    updateSharingScoreController
     )
 
+
+@app.route('/student/updateSharingScore', methods=['POST'])
+@validate_token
+def update_sharing_score_handler():
+    data = request.json
+    response, success, message = updateSharingScoreController(data)
+    if success:
+        return {"data": response, "code": 201, "message": message}
+        
+    return jsonify({"error": response, "code": 400, "message": message})
+
+@app.route('/student/fileDeleteHandler', methods=['POST'])
+@validate_token
+def delete_file_handler():
+    data = request.json
+    response, success, message = deleteFileController(data)
+    if success:
+        return {"data": response, "code": 201, "message": message}
+        
+    return jsonify({"error": response, "code": 400, "message": message})
 
 @app.route('/student/updateMe', methods=['POST'])
 @validate_token
@@ -20,6 +42,7 @@ def update_me():
     response, success, message = updateMeController(data)
     if success:
         return {"data": response, "code": 201, "message": message}
+    return jsonify({"error": response, "code": 400, "message": message})
 
 @app.route('/student/getMe', methods=['POST'])
 @validate_token

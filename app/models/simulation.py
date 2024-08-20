@@ -2,7 +2,7 @@ from bson.objectid import ObjectId
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field, ValidationError, EmailStr, root_validator
 from typing import Optional 
-from app import db
+from app import db, simulation_database
 
 class SimulationSchema(BaseModel):
     id: str = Field(default_factory=lambda: str(ObjectId()), alias='_id')
@@ -18,6 +18,7 @@ class SimulationSchema(BaseModel):
     status: bool = True
     participants: int = 0
 
+    
     @root_validator(pre=True)
     def calculate_duration(cls, values):
         try:

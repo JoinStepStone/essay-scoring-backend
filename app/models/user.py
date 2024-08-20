@@ -9,6 +9,7 @@ class UserSchema(BaseModel):
     lastName: str
     email: EmailStr
     password: Optional[str] = None
+    gpaScore: Optional[str] = None
     university: str
     gradYear: str
     ethnicity: Optional[str] = None

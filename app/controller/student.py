@@ -1,10 +1,53 @@
 from flask import jsonify, make_response
 from pydantic import ValidationError
 from bson import ObjectId
-from app import user_database,user_simulation_database, simulation_database
+from app import user_database,user_simulation_database, simulation_database, gridFileStorage
 from ..models.userSimulation import UserSimulationSchema
 from ..models.user import UserSchema
 from ..models.simulation import SimulationSchema
+
+def updateSharingScoreController(data):
+    try:
+        print("\n", "1", data, type(data["sharingScore"]), "\n")
+        filter_query_simulation = { "_id" : ObjectId(data["_id"]) }
+        # Define the update query
+        update_query_simulation = {
+            "$set": { "sharingScore": data["sharingScore"] }
+        }
+        
+        # Update the document
+        result1 = user_simulation_database.update_one(filter_query_simulation, update_query_simulation)
+        print("\n", "2", filter_query_simulation, update_query_simulation, "\n")
+
+        if result1.modified_count > 0:
+            return "", True, "Data updated successfully"
+        else:
+            return "", False, "Document matched but no changes were made (maybe the data was already the same)."
+
+    except ValidationError as e:
+        return str(e), False, "Something went bad"
+
+def deleteFileController(data):
+    try:
+        filter_query_simulation = { "_id" : ObjectId(data["_id"]) }
+        # Define the update query
+        update_query_simulation = {
+            "$set": { "fileName": None, "fileId": None, "grade": None, "sharingScore": None }
+        }
+        
+        # Update the document
+        result1 = user_simulation_database.update_one(filter_query_simulation, update_query_simulation)
+
+        if result1.modified_count > 0:
+            gridFileStorage.delete(ObjectId(data["fileId"]))
+        else:
+            return "", False, "Document matched but no changes were made (maybe the data was already the same)."
+
+        return "", True, "Data updated successfully"
+
+
+    except ValidationError as e:
+        return str(e), False, "Something went bad"
 
 def updateMeController(data):
     try:
@@ -114,11 +157,12 @@ def getSimulationSelectedController(data):
 
 def simulationDetailController(data): 
     try:
-        userSimulations = list(user_simulation_database.find({"simulationId": data['simulationId'],"userId": data['userId']},{"_id": 0}))
+        userSimulations = list(user_simulation_database.find({"simulationId": data['simulationId'],"userId": data['userId']}))
         if not userSimulations:
             return "", False, "No simulation found"
-
-        userSimulations = [UserSimulationSchema(**userSimulation).dict() for userSimulation in userSimulations]
+            
+        userSimulations[0]["_id"] = str(userSimulations[0]["_id"])
+        # userSimulations = [UserSimulationSchema(**userSimulation).dict() for userSimulation in userSimulations]
         simulationDetails = list(simulation_database.find({"_id": ObjectId(userSimulations[0]["simulationId"])},{"_id": 0}))[0]
         userDetails = list(user_database.find({"_id": ObjectId(userSimulations[0]["userId"])},{"_id": 0}))[0]
         
