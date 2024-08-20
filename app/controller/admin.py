@@ -307,7 +307,7 @@ def getAllTheSimulations():
 def getSuggestionListsController():
     try:
 
-        suggList = list(name_storage_database.find({},{"id":0}))
+        suggList = list(name_storage_database.find({},{"id":0, "universityName": 0}))
 
         if suggList:
             suggList[0]["_id"] = str(suggList[0]["_id"])

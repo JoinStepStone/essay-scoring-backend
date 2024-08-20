@@ -8,6 +8,7 @@ class NameStorageSchema(BaseModel):
     id: str = Field(default_factory=lambda: str(ObjectId()), alias='_id')
     category: Optional[list[str]] = None
     simulationName: Optional[list[str]] = None
+    universityName: Optional[list[str]] = None
     organizationName: Optional[list[str]] = None
 
     class Config:

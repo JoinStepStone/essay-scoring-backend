@@ -1,7 +1,19 @@
 from pydantic import ValidationError
-from app import user_database,user_simulation_database, simulation_database
+from app import user_database, name_storage_database
 from ..models.user import UserSchema
 from ..middleware.middleware import generate_access_token
+
+def getUniListNamesController():
+    try:
+
+        # Check if the user with the same email already exists
+        universitiesList = list(name_storage_database.find({}, { "id" : 0, "category": 0, "simulationName": 0, "organizationName": 0 }))
+        universitiesList[0]["_id"] = str(universitiesList[0]["_id"])
+
+        return universitiesList[0], True, "Fetched Successfully"
+
+    except ValidationError as e:
+        return str(e), False, "Something went bad"
 
 def signUpController(data):
     try:
