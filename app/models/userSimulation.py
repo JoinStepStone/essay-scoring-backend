@@ -10,7 +10,7 @@ from dateutil import parser
 class UserSimulationSchema(BaseModel):
     id: str = Field(default_factory=lambda: str(ObjectId()), alias='_id')
     status: Optional[bool] = False
-    sharingScore: Optional[bool]  = None
+    sharingScore: Optional[bool]  = False
     startTime: Optional[datetime] = None
     endTime: Optional[datetime] = None
     duration: Optional[str] = None  
