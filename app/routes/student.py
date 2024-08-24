@@ -131,22 +131,22 @@ def simulation_start():
 
     if file and allowed_file(file.filename):
         # # filepath = upload_file(file)
-        # grid_out = gridFileStorage.put(file, filename=file.filename)
-        response, success, message = parsed_xlsx_get_score(file)
-        if success:
-            return {"data": response, "code": 201, "message": "message"}
-        # objectData = {
-        #     "status": request.form.get('status'),
-        #     "sharingScore": request.form.get('sharingScore'),
-        #     "grade": request.form.get('grade'),
-        #     "userId": request.form.get('userId'),
-        #     "simulationId": request.form.get('simulationId'),
-        #     "fileId": str(grid_out),
-        #     "fileName": file.filename,
-        #     "startTime": request.form.get('startTime'),
-        #     "endTime": request.form.get('endTime'),
-        # }
-        # response, success, message = updateUserSimulationController(objectData)
+        grid_out = gridFileStorage.put(file, filename=file.filename)
+        # response, success, message = parsed_xlsx_get_score(file)
         # if success:
-        #     return {"data": response, "code": 201, "message": message}
+        #     return {"data": response, "code": 201, "message": "message"}
+        objectData = {
+            "status": request.form.get('status'),
+            "sharingScore": request.form.get('sharingScore'),
+            "grade": request.form.get('grade'),
+            "userId": request.form.get('userId'),
+            "simulationId": request.form.get('simulationId'),
+            "fileId": str(grid_out),
+            "fileName": file.filename,
+            "startTime": request.form.get('startTime'),
+            "endTime": request.form.get('endTime'),
+        }
+        response, success, message = updateUserSimulationController(objectData)
+        if success:
+            return {"data": response, "code": 201, "message": message}
         return {"error": response, "code": 400, "message": message}
