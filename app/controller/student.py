@@ -8,7 +8,6 @@ from ..models.simulation import SimulationSchema
 
 def updateSharingScoreController(data):
     try:
-        print("\n", "1", data, type(data["sharingScore"]), "\n")
         filter_query_simulation = { "_id" : ObjectId(data["_id"]) }
         # Define the update query
         update_query_simulation = {
@@ -17,7 +16,6 @@ def updateSharingScoreController(data):
         
         # Update the document
         result1 = user_simulation_database.update_one(filter_query_simulation, update_query_simulation)
-        print("\n", "2", filter_query_simulation, update_query_simulation, "\n")
 
         if result1.modified_count > 0:
             return "", True, "Data updated successfully"
@@ -98,12 +96,12 @@ def getMeController(data):
 def simulationByClassCodeController(data):
     try:
         simulations = list(simulation_database.find(
-            {"classCode": data['classCode']}, 
+            {"classCode": data['classCode'], "status": True}, 
             {"classCode": 1, "simulationName": 1}
         ))
 
         if not simulations:
-            return "", False, "No simulation found"
+            return "", False, "No simulation found or inactive"
         
         simulations[0]["_id"] = str(simulations[0]["_id"])
         return simulations[0], True, "Successfully fetched"
@@ -114,8 +112,7 @@ def simulationByClassCodeController(data):
 def simulationSelectionController(data):
     try:
 
-        # Validate incoming data using Pydantic schema
-        simulation = list(simulation_database.find( {"classCode" : data["classCode"] }))
+        simulation = list(simulation_database.find( {"classCode" : data["classCode"], "status": True }))
         if simulation:
             found = list(user_simulation_database.find({"simulationId":simulation[0]["_id"], "userId": data["userId"]}))
             userSimulatio = UserSimulationSchema(**{"simulationId":str(simulation[0]["_id"]), "userId": data["userId"]})
@@ -127,7 +124,7 @@ def simulationSelectionController(data):
             if result:
                 return "", True, "Data inserted successfully"
 
-        return "", False, "No simulation found"
+        return "", False, "No simulation found or inactive"
 
     except ValidationError as e:
         return str(e), False, "Something went bad"
@@ -163,7 +160,8 @@ def simulationDetailController(data):
             
         userSimulations[0]["_id"] = str(userSimulations[0]["_id"])
         # userSimulations = [UserSimulationSchema(**userSimulation).dict() for userSimulation in userSimulations]
-        simulationDetails = list(simulation_database.find({"_id": ObjectId(userSimulations[0]["simulationId"])},{"_id": 0}))[0]
+        simulationDetails = list(simulation_database.find({"_id": ObjectId(userSimulations[0]["simulationId"])},{"id": 0}))[0]
+        simulationDetails["_id"] = str(simulationDetails["_id"])
         userDetails = list(user_database.find({"_id": ObjectId(userSimulations[0]["userId"])},{"_id": 0}))[0]
         
         result = {

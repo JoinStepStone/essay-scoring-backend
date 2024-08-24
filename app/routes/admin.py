@@ -140,7 +140,8 @@ def update_uploaded_file_route():
             "classCode": request.form.get('classCode'),
             "fileId": str(grid_out),
             "fileName": file.filename,
-            "participants": request.form.get('participants')
+            "participants": request.form.get('participants'),
+            "status": request.form.get('status')
         }
     else:
         objectData = {
@@ -151,7 +152,8 @@ def update_uploaded_file_route():
             "startTime": request.form.get('startTime'),
             "endTime": request.form.get('endTime'),
             "classCode": request.form.get('classCode'),
-            "participants": request.form.get('participants')
+            "participants": request.form.get('participants'),
+            "status": request.form.get('status')
         }
     response, success, message = updateSimulationController(objectData)
     if success:
@@ -179,7 +181,8 @@ def upload_file_route():
             "endTime": request.form.get('endTime'),
             "fileId": str(grid_out),
             "fileName": file.filename,
-            "classCode": request.form.get('classCode')
+            "classCode": request.form.get('classCode'),
+            "status": request.form.get('status')
         }
         response, success, message = createSimulationController(objectData)
         if success:

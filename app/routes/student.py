@@ -1,7 +1,8 @@
-from flask import request, jsonify
+from flask import request, send_file, jsonify
 from bson import ObjectId
-from app import app, gridFileStorage
-from ..middleware.middleware import allowed_file, upload_file, validate_token
+from app import app, gridFileStorage, simulation_database
+from io import BytesIO
+from ..middleware.middleware import allowed_file, upload_file, validate_token, parsed_xlsx_get_score
 from ..controller.student import (
     updateUserSimulationController, 
     getSimulationSelectedController, 
@@ -83,6 +84,32 @@ def get_simulation_selected():
     return jsonify({"error": response, "code": 400, "message": message})
 
 
+@app.route('/student/downloadSimulationFile/<file_id>', methods=['GET']) 
+# @validate_token_admin  # Optionally, you could validate again here
+def download_simulation_file_student(file_id):
+    simulationId = file_id.split(",")[0]
+    file_id = file_id.split(",")[1]
+
+    simulations = list(simulation_database.find(
+            {"_id": ObjectId(simulationId), "status": False}
+        ))
+
+    if simulations:
+        return jsonify({"data": "", "code": 400, "message": "Simulation is inactive"})
+
+    grid_out = gridFileStorage.get(ObjectId(file_id))
+    
+    if not grid_out:
+        return {'data': '', "code": 400, "message": "No files are found"}
+    
+    # Serve the file as a download
+    return send_file(
+        BytesIO(grid_out.read()), 
+        mimetype=grid_out.content_type, 
+        as_attachment=True, 
+        download_name=grid_out.filename
+    )
+
 @app.route('/student/getsimulationDetail', methods=['POST'])
 @validate_token
 def get_simulation_detail():
@@ -103,21 +130,23 @@ def simulation_start():
         return {'data': '', "code": 400, "message": "No files are found"}
 
     if file and allowed_file(file.filename):
-        # filepath = upload_file(file)
-        grid_out = gridFileStorage.put(file, filename=file.filename)
-     
-        objectData = {
-            "status": request.form.get('status'),
-            "sharingScore": request.form.get('sharingScore'),
-            "grade": request.form.get('grade'),
-            "userId": request.form.get('userId'),
-            "simulationId": request.form.get('simulationId'),
-            "fileId": str(grid_out),
-            "fileName": file.filename,
-            "startTime": request.form.get('startTime'),
-            "endTime": request.form.get('endTime'),
-        }
-        response, success, message = updateUserSimulationController(objectData)
+        # # filepath = upload_file(file)
+        # grid_out = gridFileStorage.put(file, filename=file.filename)
+        response, success, message = parsed_xlsx_get_score(file)
         if success:
-            return {"data": response, "code": 201, "message": message}
-    return {"error": response, "code": 400, "message": message}
+            return {"data": response, "code": 201, "message": "message"}
+        # objectData = {
+        #     "status": request.form.get('status'),
+        #     "sharingScore": request.form.get('sharingScore'),
+        #     "grade": request.form.get('grade'),
+        #     "userId": request.form.get('userId'),
+        #     "simulationId": request.form.get('simulationId'),
+        #     "fileId": str(grid_out),
+        #     "fileName": file.filename,
+        #     "startTime": request.form.get('startTime'),
+        #     "endTime": request.form.get('endTime'),
+        # }
+        # response, success, message = updateUserSimulationController(objectData)
+        # if success:
+        #     return {"data": response, "code": 201, "message": message}
+        return {"error": response, "code": 400, "message": message}

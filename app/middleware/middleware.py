@@ -11,82 +11,81 @@ from openpyxl.styles.colors import Color
 
 # Secret key for JWT encoding/decoding
 SECRET_KEY = "your_secret_key_here"
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'csv', 'xlsx'}
+ALLOWED_EXTENSIONS = {'csv', 'xlsx'}
 
-def save_parsed_data_to_excel(parsed_data, output_file_path):
-    wb = openpyxl.Workbook()
-    for sheet_name, sheet_data in parsed_data.items():
-        ws = wb.create_sheet(title=sheet_name)
-        for row_idx, row in enumerate(sheet_data):
-            for col_idx, cell_data in enumerate(row):
-                cell = ws.cell(row=row_idx + 1, column=col_idx + 1, value=cell_data["value"])
-                
-                # Set font properties
-                if cell_data["font"]:
-                    font_color = None
-                    if cell_data["font"]["color"]:
-                        if isinstance(cell_data["font"]["color"], str):
-                            font_color = Color(rgb=cell_data["font"]["color"])
-                        elif hasattr(cell_data["font"]["color"], 'rgb'):
-                            font_color = Color(rgb=cell_data["font"]["color"].rgb)
-                    
-                    cell.font = Font(
-                        name=cell_data["font"]["name"],
-                        size=cell_data["font"]["size"],
-                        bold=cell_data["font"]["bold"],
-                        italic=cell_data["font"]["italic"],
-                        color=font_color
-                    )
-                
-                # Set fill properties
-                if cell_data["fill"]:
-                    fill_color = None
-                    if cell_data["fill"]["bgColor"]:
-                        if isinstance(cell_data["fill"]["bgColor"], str):
-                            fill_color = Color(rgb=cell_data["fill"]["bgColor"])
-                        elif hasattr(cell_data["fill"]["bgColor"], 'rgb'):
-                            fill_color = Color(rgb=cell_data["fill"]["bgColor"].rgb)
-                    
-                    # Only set fill if color is available
-                    if fill_color:
-                        cell.fill = PatternFill(
-                            fill_type=cell_data["fill"]["fill_type"],
-                            fgColor=fill_color
-                        )
+def get_cell_value(file, sheet_name, cell):
+    
+    df = pd.read_excel(file, sheet_name=sheet_name, header=None)
+    
+    column_letter = cell[0]  
+    row_number = int(cell[1:]) - 1
+    
+    # Convert column letter to a zero-based index
+    column_index = ord(column_letter.upper()) - ord('A')
+    
+    # Retrieve the value from the DataFrame
+    cell_value = df.iloc[row_number, column_index]
+    
+    return cell_value
 
-    wb.save(output_file_path)
+def make_dict_grading_key(value_list):
+    if len(value_list[0]) == len(value_list[1]) == len(value_list[2]):
+        dictionary_grading_list = []
+        value_list[0].pop(0)
+        value_list[1].pop(0)
+        value_list[2].pop(0)
 
-def parse_csv(file_path):
-    df = pd.read_csv(file_path)
-    return df.to_dict(orient='records')
+        for cell_value1, cell_value2, cell_value3 in zip(value_list[0], value_list[1], value_list[2]):
+            try:
+                if isinstance(cell_value1, str):
+                    cell_value_cleaned = cell_value1.strip("=")
+                    file_name, cell_reference = cell_value_cleaned.split('!')
+                    file_name_clean = file_name.strip("'")
+                    parts = file_name_clean.split('_')
+                    parts[1] = "Student"
+                    modified_string = '_'.join(parts)
+                    dictionary_grading_list.append({
+                        "file_name" : file_name_clean,
+                        "cell_number" : cell_reference,
+                        "cell_value": cell_value2,
+                        "grade": cell_value3,
+                        "target_file_name": modified_string
+                    })
+            except:
+                print("\n", cell_value1, cell_value2, cell_value3)
+                return "", False, "Error in processing"
 
-def parse_excel(file_path):
-    wb = openpyxl.load_workbook(file_path, data_only=True)
-    all_data = {}
-    for sheet in wb.sheetnames:
-        sheet_data = []
-        ws = wb[sheet]
-        for row in ws.iter_rows():
-            row_data = []
-            for cell in row:
-                cell_info = {
-                    "value": cell.value,
-                    "font": {
-                        "name": cell.font.name, 
-                        "size": cell.font.size,
-                        "bold": cell.font.bold,
-                        "italic": cell.font.italic,
-                        "color": cell.font.color.rgb if cell.font.color else None
-                    },
-                    "fill": {
-                        "fill_type": cell.fill.fill_type,
-                        "bgColor": cell.fill.bgColor.rgb if cell.fill.bgColor else None
-                    }
-                }
-                row_data.append(cell_info)
-            sheet_data.append(row_data)
-        all_data[sheet] = sheet_data
-    return all_data
+        return dictionary_grading_list, True, ""
+
+    return "", False, "Grading Key Workbook has different length of cell, values and grades"
+
+def remove_unnessary_data(grading_key_df):
+    # Drop rows where all elements are NaN and drop columns that are entirely NaN
+    grading_key_df.dropna(how='all', inplace=True)
+    grading_key_df.dropna(axis=1, how='all', inplace=True)
+    
+    # Convert to dictionary format
+    grading_key_dict = grading_key_df.to_dict(orient='list')
+
+    return grading_key_dict
+
+def parsed_xlsx_get_score(file):
+    # Load the Excel file
+    xlsx = pd.ExcelFile(file)
+    
+    # Check if 'Grading Key' sheet exists
+    if 'Grading Key' in xlsx.sheet_names:
+        # Parse the 'Grading Key' sheet
+        grading_key_df = pd.read_excel(file, sheet_name='Grading Key')
+        cleaned_original_data = remove_unnessary_data(grading_key_df)
+        dictionary_grading_key, success, error = make_dict_grading_key(list(cleaned_original_data.values()))
+
+        print("\n", get_cell_value(file, "Toggle Model_Student", "H14"), "\n")
+        
+        return dictionary_grading_key, success, error
+    else:
+        return "", False, "Grading Key sheet not found in the Excel file."
+
 
 def upload_file(file):
     fileDummy = file.filename.rsplit('.', 1)[0]
