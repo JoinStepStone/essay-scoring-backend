@@ -10,7 +10,6 @@ import pandas as pd
 from openpyxl.styles.colors import Color
 from io import BytesIO
 import math
-import xlwings as xw
 
 # Secret key for JWT encoding/decoding
 SECRET_KEY = "your_secret_key_here"
