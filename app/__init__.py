@@ -6,7 +6,7 @@ import os
 
 UPLOAD_FOLDER = './app/uploads/'
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": ["https://excel-app-peach.vercel.app", "http://localhost:3001"]}})
+CORS(app)
 app.config["SECRET_KEY"] = "db24c608640f5034b30b8e1e1eb5618ed0ffdbf5"
 app.config["MONGO_URI"] = (
     "mongodb://localhost:27017/todo_db" if False else os.environ.get('MONGODB_URI')
