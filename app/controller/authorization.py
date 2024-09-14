@@ -42,7 +42,7 @@ def signInController(data):
         if existing_user:
             existing_user['_id'] = str(existing_user['_id'])
             tokenized = generate_access_token(existing_user)
-            return {"token":tokenized,"role":existing_user["role"],"_id":existing_user['_id']}, True, "Signed in successfully"
+            return {"token":tokenized,"role":existing_user["role"],"_id":existing_user['_id'], "name": existing_user['firstName']}, True, "Signed in successfully"
 
         return "", False, "User does not exist"
     except ValidationError as e:

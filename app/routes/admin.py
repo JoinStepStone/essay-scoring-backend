@@ -187,7 +187,7 @@ def upload_file_route():
         response, success, message = createSimulationController(objectData)
         if success:
             return {"data": response, "code": 201, "message": message}
-    return {"error": response, "code": 400, "message": message}
+    return {"error": "Something went wrong", "code": 400, "message": message}
 
 @app.route('/admin/downloadSimulationFile/<file_id>', methods=['GET'])
 # @validate_token_admin  # Optionally, you could validate again here

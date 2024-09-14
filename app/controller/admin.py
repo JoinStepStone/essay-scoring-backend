@@ -258,7 +258,6 @@ def getAllTheStuedents():
         for user in users:
             user['_id'] = str(user['_id']) 
         users = [UserSchema(**user).dict() for user in users]
-
         for user in users:
             scores= []
             examsTaken = 0

@@ -2,7 +2,12 @@ from flask import request, send_file, jsonify
 from bson import ObjectId
 from app import app, gridFileStorage, simulation_database
 from io import BytesIO
-from ..middleware.middleware import allowed_file, upload_file, validate_token, parsed_xlsx_get_score
+from ..middleware.middleware import (
+    allowed_file, 
+    upload_file, validate_token, 
+    parsed_xlsx_get_score, remove_sheets, compare_results,
+    get_df, paste_extracted_df, copy_sheet, fill_values_get_score
+    )
 from ..controller.student import (
     updateUserSimulationController, 
     getSimulationSelectedController, 
@@ -15,6 +20,31 @@ from ..controller.student import (
     updateSharingScoreController
     )
 
+
+@app.route('/student/simulation/score', methods=['POST']) 
+@validate_token
+def get_simulation_student_score():
+    if 'file' not in request.files:
+        return {'data': '', "code": 400, "message": "No files are found"}
+    file = request.files['file']
+    original_file_id = request.form.get('original_file_id')
+
+    if file.filename == '':
+        return {'data': '', "code": 400, "message": "No files are found"}
+
+    grid_out = gridFileStorage.get(ObjectId(original_file_id))
+    if not grid_out:
+        return {'data': '', "code": 400, "message": "No files are found"}
+
+    grid_out_in_bytes = BytesIO(grid_out.read())
+    copy_sheet(grid_out_in_bytes, file)
+    fill_values_get_score("student_file", file)
+    response, success, message = fill_values_get_score("student_file", file)
+    if success:
+        return jsonify({"data": response, "code": 201, "message": message})
+        
+    return jsonify({"error": response, "code": 400, "message": message})
+    
 
 @app.route('/student/updateSharingScore', methods=['POST'])
 @validate_token
@@ -85,7 +115,7 @@ def get_simulation_selected():
 
 
 @app.route('/student/downloadSimulationFile/<file_id>', methods=['GET']) 
-# @validate_token_admin  # Optionally, you could validate again here
+# @validate_token
 def download_simulation_file_student(file_id):
     simulationId = file_id.split(",")[0]
     file_id = file_id.split(",")[1]
@@ -98,13 +128,13 @@ def download_simulation_file_student(file_id):
         return jsonify({"data": "", "code": 400, "message": "Simulation is inactive"})
 
     grid_out = gridFileStorage.get(ObjectId(file_id))
-    
     if not grid_out:
         return {'data': '', "code": 400, "message": "No files are found"}
     
+    file_in_bytes = remove_sheets(BytesIO(grid_out.read()))
     # Serve the file as a download
     return send_file(
-        BytesIO(grid_out.read()), 
+        file_in_bytes, 
         mimetype=grid_out.content_type, 
         as_attachment=True, 
         download_name=grid_out.filename
@@ -132,9 +162,6 @@ def simulation_start():
     if file and allowed_file(file.filename):
         # # filepath = upload_file(file)
         grid_out = gridFileStorage.put(file, filename=file.filename)
-        # response, success, message = parsed_xlsx_get_score(file)
-        # if success:
-        #     return {"data": response, "code": 201, "message": "message"}
         objectData = {
             "status": request.form.get('status'),
             "sharingScore": request.form.get('sharingScore'),
