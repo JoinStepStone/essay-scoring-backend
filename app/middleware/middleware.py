@@ -41,7 +41,6 @@ def fill_values_get_score(source_wb, target_file):
                     target_sheet_name = replace_name_dict["Toggle Model_Solutions"]
 
                 if sheet_name == 'Grading Key Sensitivity Table' and not_found_value:
-                    print("\n", "Value: ", grading_key_sheet['F'+str(row_idx - 1)].value, "\n")
                     not_found_value = False
                     sensitive_value = grading_key_sheet['F'+str(row_idx - 1)].value
 
@@ -50,6 +49,9 @@ def fill_values_get_score(source_wb, target_file):
                 target_sheet = target_wb[target_sheet_name]  # Financial model or valuation model
                 target_cell_value = target_sheet[cell_number].value # Pick the value from the cell
                 grading_key_sheet['E'+str(row_idx)] = target_cell_value # Assign it to gradingkey cell E
+
+                if target_cell_value is None:
+                    target_cell_value = 0
                 if round(grading_key_sheet['D'+str(row_idx)].value,3) != round(target_cell_value,3):
                     if sheet_name == 'Grading Key Sensitivity Table':
                         sensitive_value = 0
