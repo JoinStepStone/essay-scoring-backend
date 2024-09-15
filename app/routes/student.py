@@ -2,6 +2,7 @@ from flask import request, send_file, jsonify
 from bson import ObjectId
 from app import app, gridFileStorage, simulation_database
 from io import BytesIO
+import base64
 from ..middleware.middleware import (
     allowed_file, 
     upload_file, validate_token, 
@@ -37,13 +38,46 @@ def get_simulation_student_score():
         return {'data': '', "code": 400, "message": "No files are found"}
 
     grid_out_in_bytes = BytesIO(grid_out.read())
-    copy_sheet(grid_out_in_bytes, file)
-    response, success, message = fill_values_get_score("student_file", file)
+    student_updated_file = copy_sheet(grid_out_in_bytes, file)
+    response, success, message = fill_values_get_score(student_updated_file, file)
     if success:
         return {"data": response, "code": 201, "message": message}
         
     return jsonify({"error": response, "code": 400, "message": message})
     
+@app.route('/student/simulation/upload', methods=['POST'])
+@validate_token
+def simulation_start():
+    if 'file' not in request.files:
+        return {'data': '', "code": 400, "message": "No files are found"}
+    file = request.files['file']
+    if file.filename == '':
+        return {'data': '', "code": 400, "message": "No files are found"}
+
+    if file and allowed_file(file.filename):
+        file_bytes = base64.b64decode(request.form.get('file_in_byte'))
+        file_buffer = BytesIO(file_bytes)
+        student_updated_file = copy_sheet(file_buffer, file, True)
+        file_stream = BytesIO()
+        student_updated_file.save(file_stream)
+        file_stream.seek(0)
+        # filepath = upload_file(file)
+        grid_out = gridFileStorage.put(file_stream, filename=file.filename)
+        objectData = {
+            "status": request.form.get('status'),
+            "sharingScore": request.form.get('sharingScore'),
+            "grade": request.form.get('grade'),
+            "userId": request.form.get('userId'),
+            "simulationId": request.form.get('simulationId'),
+            "fileId": str(grid_out),
+            "fileName": file.filename,
+            "startTime": request.form.get('startTime'),
+            "endTime": request.form.get('endTime'),
+        }
+        response, success, message = updateUserSimulationController(objectData)
+        if success:
+            return {"data": response, "code": 201, "message": message}
+        return {"error": response, "code": 400, "message": message}
 
 @app.route('/student/updateSharingScore', methods=['POST'])
 @validate_token
@@ -149,30 +183,3 @@ def get_simulation_detail():
     return jsonify({"error": response, "code": 400, "message": message})
 
 
-@app.route('/student/simulation/upload', methods=['POST'])
-@validate_token
-def simulation_start():
-    if 'file' not in request.files:
-        return {'data': '', "code": 400, "message": "No files are found"}
-    file = request.files['file']
-    if file.filename == '':
-        return {'data': '', "code": 400, "message": "No files are found"}
-
-    if file and allowed_file(file.filename):
-        # # filepath = upload_file(file)
-        grid_out = gridFileStorage.put(file, filename=file.filename)
-        objectData = {
-            "status": request.form.get('status'),
-            "sharingScore": request.form.get('sharingScore'),
-            "grade": request.form.get('grade'),
-            "userId": request.form.get('userId'),
-            "simulationId": request.form.get('simulationId'),
-            "fileId": str(grid_out),
-            "fileName": file.filename,
-            "startTime": request.form.get('startTime'),
-            "endTime": request.form.get('endTime'),
-        }
-        response, success, message = updateUserSimulationController(objectData)
-        if success:
-            return {"data": response, "code": 201, "message": message}
-        return {"error": response, "code": 400, "message": message}

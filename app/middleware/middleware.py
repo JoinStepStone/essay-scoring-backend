@@ -10,14 +10,15 @@ import pandas as pd
 from openpyxl.styles.colors import Color
 from io import BytesIO
 import math
+import base64
 
 # Secret key for JWT encoding/decoding
 SECRET_KEY = "your_secret_key_here"
 ALLOWED_EXTENSIONS = {'xlsm'}
 
-def fill_values_get_score(source_wwwb, target_file):
+def fill_values_get_score(source_wb, target_file):
     target_wb = openpyxl.load_workbook(target_file, keep_vba=True, data_only= True)
-    source_wb = openpyxl.load_workbook('updated_target_file.xlsm', keep_vba=True, data_only= True)
+    # source_wb = openpyxl.load_workbook('updated_target_file.xlsm', keep_vba=True, data_only= True)
     replace_name_dict = {"Toggle Valuation_Solution": "Valuation Model", "Toggle Model_Solutions": "Financial Model"}
     score = []
     for sheet_name in ['Grading Key', 'Grading Key Sensitivity Table']:
@@ -59,11 +60,15 @@ def fill_values_get_score(source_wwwb, target_file):
                         score.append(grading_key_sheet['F'+str(row_idx)].value)
                     grading_key_sheet['G'+str(row_idx)] = grading_key_sheet['F'+str(row_idx)].value
                     
-        print("\n","Sheet Changed", " Score: ", sum(score), " Sensitve: ", sensitive_value,"\n")
-    source_wb.save('updated_target_new_value_file.xlsm')
-    return sum(score)+sensitive_value, True, ""
+    output = BytesIO()
+    source_wb.save(output)
+    output.seek(0)  # Rewind the buffer to the beginning
 
-def copy_sheet(source_file, target_file):
+    # Base64 encode the binary data for sending in JSON
+    encoded_excel = base64.b64encode(output.read()).decode('utf-8')
+    return {"score": sum(score)+sensitive_value, 'file': encoded_excel}, True, ""
+
+def copy_sheet(source_file, target_file,keep_values = False):
     source_wb = openpyxl.load_workbook(source_file, keep_vba=True, data_only=True)
     target_wb = openpyxl.load_workbook(target_file, keep_vba=True)
     
@@ -80,7 +85,10 @@ def copy_sheet(source_file, target_file):
                     new_text = cell.value.replace("=", "")
                     new_sheet[cell.coordinate] = new_text
                 elif cell.column_letter == 'E' and row_idx > 2:
-                    new_sheet[cell.coordinate] = 0
+                    if keep_values:
+                        new_sheet[cell.coordinate] = cell.value
+                    else:
+                        new_sheet[cell.coordinate] = 0
                 else:
                     new_sheet[cell.coordinate] = cell.value
     target_wb.save('updated_target_file.xlsm')
