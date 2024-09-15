@@ -38,10 +38,9 @@ def get_simulation_student_score():
 
     grid_out_in_bytes = BytesIO(grid_out.read())
     copy_sheet(grid_out_in_bytes, file)
-    fill_values_get_score("student_file", file)
     response, success, message = fill_values_get_score("student_file", file)
     if success:
-        return jsonify({"data": response, "code": 201, "message": message})
+        return {"data": response, "code": 201, "message": message}
         
     return jsonify({"error": response, "code": 400, "message": message})
     

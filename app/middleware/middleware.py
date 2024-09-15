@@ -61,15 +61,7 @@ def fill_values_get_score(source_wwwb, target_file):
                     
         print("\n","Sheet Changed", " Score: ", sum(score), " Sensitve: ", sensitive_value,"\n")
     source_wb.save('updated_target_new_value_file.xlsm')
-    # Now convert the modified source_wb to bytes
-    output = BytesIO()
-    source_wb.save(output)  # Save the workbook into the BytesIO object
-    output.seek(0)  # Go back to the beginning of the BytesIO object
-
-    # Now 'output' contains the binary data of the Excel workbook.
-    # You can use `output.getvalue()` to retrieve the raw byte content of the workbook if needed.
-    workbook_bytes = output.getvalue()
-    return {"score":sum(score)+sensitive_value, "workbook": workbook_bytes}, True, ""
+    return sum(score)+sensitive_value, True, ""
 
 def copy_sheet(source_file, target_file):
     source_wb = openpyxl.load_workbook(source_file, keep_vba=True, data_only=True)
