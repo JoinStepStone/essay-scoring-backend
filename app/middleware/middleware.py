@@ -362,7 +362,7 @@ def get_current_user():
     return getattr(g, "current_user", None)
 
 def remove_sheets(current_workbook):
-    workbook = openpyxl.load_workbook(current_workbook, keep_vba=True)
+    workbook = openpyxl.load_workbook(current_workbook, keep_vba=True, data_only=True)
 
     sheets_to_delete = ['Toggle Model_Solutions', 'Toggle Valuation_Solution', 'Grading Key', 'Grading Key Sensitivity Table']  
 
