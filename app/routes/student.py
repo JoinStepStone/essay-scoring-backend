@@ -1,4 +1,4 @@
-from flask import request, send_file, jsonify
+from flask import request, send_file, jsonify, make_response
 from bson import ObjectId
 from app import app, gridFileStorage, simulation_database
 from io import BytesIO
@@ -165,13 +165,20 @@ def download_simulation_file_student(file_id):
         return {'data': '', "code": 400, "message": "No files are found"}
     
     file_in_bytes = remove_sheets(BytesIO(grid_out.read()))
-    # Serve the file as a download
-    return send_file(
+    
+    response = make_response(send_file(
         file_in_bytes, 
         mimetype=grid_out.content_type, 
-        as_attachment=True, 
+        as_attachment=False, 
         download_name=grid_out.filename
-    )
+    ))
+        
+    # Set headers manually to disable caching
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    
+    return response
 
 @app.route('/student/getsimulationDetail', methods=['POST'])
 @validate_token
