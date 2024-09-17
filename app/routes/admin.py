@@ -1,9 +1,9 @@
-from flask import request, send_file, jsonify
+from flask import request, send_file, jsonify, make_response
 from io import BytesIO
 from bson import ObjectId
 import pandas as pd
 from app import app, gridFileStorage
-from ..middleware.middleware import allowed_file, upload_file, validate_token_admin
+from ..middleware.middleware import allowed_file, upload_file, validate_token_admin, visible_sheets
 from ..controller.admin import (
     createSimulationController, 
     getAllTheStuedents, 
@@ -198,13 +198,23 @@ def download_simulation_file(file_id):
     if not grid_out:
         return {'data': '', "code": 400, "message": "No files are found"}
     
-    # Serve the file as a download
-    return send_file(
-        BytesIO(grid_out.read()), 
+
+
+    file_in_bytes = visible_sheets(BytesIO(grid_out.read()))
+    
+    response = make_response(send_file(
+        file_in_bytes, 
         mimetype=grid_out.content_type, 
-        as_attachment=True, 
+        as_attachment=False, 
         download_name=grid_out.filename
-    )
+    ))
+        
+    # Set headers manually to disable caching
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    
+    return response
 
 
 @app.route('/admin/getSimulationDetails', methods=['POST'])

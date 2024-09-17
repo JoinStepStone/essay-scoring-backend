@@ -16,9 +16,9 @@ import base64
 SECRET_KEY = "your_secret_key_here"
 ALLOWED_EXTENSIONS = {'xlsm'}
 
-def fill_values_get_score(source_wb, target_file):
+def fill_values_get_score(source_wbb, target_file):
     target_wb = openpyxl.load_workbook(target_file, keep_vba=True, data_only= True)
-    # source_wb = openpyxl.load_workbook('updated_target_file.xlsm', keep_vba=True, data_only= True)
+    source_wb = openpyxl.load_workbook(source_wbb, keep_vba=True, data_only= True)
     replace_name_dict = {"Toggle Valuation_Solution": "Valuation Model", "Toggle Model_Solutions": "Financial Model"}
     score = []
     for sheet_name in ['Grading Key', 'Grading Key Sensitivity Table']:
@@ -76,11 +76,12 @@ def copy_sheet(source_file, target_file,keep_values = False):
     
     for sheet_name in ['Grading Key', 'Grading Key Sensitivity Table']:
         grading_key_sheet = source_wb[sheet_name]
-        new_sheet = target_wb.create_sheet(title=sheet_name)
+        new_sheet = target_wb[sheet_name]
 
         keep_cells = ["C", "D", "E", "F", "G"]
         for row_idx, row in enumerate(grading_key_sheet.iter_rows(), start=1):
             for cell in row:
+                print("\n", new_sheet[cell.coordinate].value, "\n")
                 if cell.column_letter not in keep_cells:
                     new_sheet[cell.coordinate] = ""
                 elif isinstance(cell.value, str) and cell.value.startswith('='):
@@ -366,13 +367,25 @@ def get_current_user():
 def remove_sheets(current_workbook):
     workbook = openpyxl.load_workbook(current_workbook, keep_vba=True, data_only=True)
 
-    sheets_to_delete = ['Toggle Model_Solutions', 'Toggle Valuation_Solution', 'Grading Key', 'Grading Key Sensitivity Table']  
+    sheets_to_keep = ['Instructions', 'Financial Model', 'Valuation Model', '']  
 
-    for sheet in sheets_to_delete:
-        if sheet in workbook.sheetnames:
+    for sheet in workbook.sheetnames:
+        if sheet not in sheets_to_keep:
             std = workbook[sheet]
-            workbook.remove(std)
+            std.sheet_state = 'veryHidden'  # Hide the sheet instead of removing
 
+    output = BytesIO()
+    workbook.save(output)
+    output.seek(0) 
+    return output
+
+def visible_sheets(current_workbook):
+    workbook = openpyxl.load_workbook(current_workbook, keep_vba=True, data_only=True)
+
+    for sheet in workbook.sheetnames:
+        std = workbook[sheet]
+        std.sheet_state = 'visible'
+        
     output = BytesIO()
     workbook.save(output)
     output.seek(0) 

@@ -38,13 +38,46 @@ def get_simulation_student_score():
         return {'data': '', "code": 400, "message": "No files are found"}
 
     grid_out_in_bytes = BytesIO(grid_out.read())
-    student_updated_file = copy_sheet(grid_out_in_bytes, file)
-    response, success, message = fill_values_get_score(student_updated_file, file)
+    # student_updated_file = copy_sheet(grid_out_in_bytes, file)
+    response, success, message = fill_values_get_score(grid_out_in_bytes, file)
     if success:
         return {"data": response, "code": 201, "message": message}
         
     return jsonify({"error": response, "code": 400, "message": message})
+
+@app.route('/student/downloadSimulationFile/<file_id>', methods=['GET']) 
+# @validate_token
+def download_simulation_file_student(file_id):
+    simulationId = file_id.split(",")[0]
+    file_id = file_id.split(",")[1]
+
+    simulations = list(simulation_database.find(
+            {"_id": ObjectId(simulationId), "status": False}
+        ))
+
+    if simulations:
+        return jsonify({"data": "", "code": 400, "message": "Simulation is inactive"})
+
+    grid_out = gridFileStorage.get(ObjectId(file_id))
+    if not grid_out:
+        return {'data': '', "code": 400, "message": "No files are found"}
     
+    file_in_bytes = remove_sheets(BytesIO(grid_out.read()))
+    
+    response = make_response(send_file(
+        file_in_bytes, 
+        mimetype=grid_out.content_type, 
+        as_attachment=False, 
+        download_name=grid_out.filename
+    ))
+        
+    # Set headers manually to disable caching
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    
+    return response
+
 @app.route('/student/simulation/upload', methods=['POST'])
 @validate_token
 def simulation_start():
@@ -146,39 +179,6 @@ def get_simulation_selected():
         return jsonify({"data": response, "code": 201, "message": message})
     return jsonify({"error": response, "code": 400, "message": message})
 
-
-@app.route('/student/downloadSimulationFile/<file_id>', methods=['GET']) 
-# @validate_token
-def download_simulation_file_student(file_id):
-    simulationId = file_id.split(",")[0]
-    file_id = file_id.split(",")[1]
-
-    simulations = list(simulation_database.find(
-            {"_id": ObjectId(simulationId), "status": False}
-        ))
-
-    if simulations:
-        return jsonify({"data": "", "code": 400, "message": "Simulation is inactive"})
-
-    grid_out = gridFileStorage.get(ObjectId(file_id))
-    if not grid_out:
-        return {'data': '', "code": 400, "message": "No files are found"}
-    
-    file_in_bytes = remove_sheets(BytesIO(grid_out.read()))
-    
-    response = make_response(send_file(
-        file_in_bytes, 
-        mimetype=grid_out.content_type, 
-        as_attachment=False, 
-        download_name=grid_out.filename
-    ))
-        
-    # Set headers manually to disable caching
-    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-    
-    return response
 
 @app.route('/student/getsimulationDetail', methods=['POST'])
 @validate_token
