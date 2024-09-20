@@ -11,6 +11,8 @@ from openpyxl.styles.colors import Color
 from io import BytesIO
 import math
 import base64
+import zipfile
+from xml.etree import ElementTree as ET
 
 # Secret key for JWT encoding/decoding
 SECRET_KEY = "your_secret_key_here"
@@ -64,38 +66,190 @@ def fill_values_get_score(source_wbb, target_file):
                     
     output = BytesIO()
     source_wb.save(output)
-    output.seek(0)  # Rewind the buffer to the beginning
+    output.seek(0) 
 
     # Base64 encode the binary data for sending in JSON
     encoded_excel = base64.b64encode(output.read()).decode('utf-8')
     return {"score": sum(score)+sensitive_value, 'file': encoded_excel}, True, ""
 
+# Function to generate a new sheet XML with dummy data
+def create_new_sheet_xml_with_data(data):
+    worksheet = ET.Element('worksheet', xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main")
+    sheet_data = ET.SubElement(worksheet, 'sheetData')
+    
+    def handle_nan(value):
+        """Replace NaN with empty string or any other desired placeholder."""
+        return "" if isinstance(value, float) and math.isnan(value) else value
+
+    # First, add the header row (row 1)
+    headers = ["Cell", "Solutions", "Student", "Credit Values", "Cell Score"]
+    header_row = ET.SubElement(sheet_data, 'row', {'r': '1'})  # Header row is always row 1
+    for col_idx, header in enumerate(headers):
+        col_letter = chr(ord('A') + col_idx)  # Column letters: A, B, C, D, E...
+        cell_ref = f"{col_letter}1"
+        cell_elem = ET.SubElement(header_row, 'c', {'r': cell_ref, 't': 'str'})
+        value_elem = ET.SubElement(cell_elem, 'v')
+        value_elem.text = header  # Set header text
+
+    # Now, iterate through the data starting at row 2
+    for row_idx, row_data in enumerate(data, 2):  # Row index starts from 2 (after the header)
+        row_elem = ET.SubElement(sheet_data, 'row', {'r': str(row_idx)})
+
+        # Column 'A': Cell reference
+        col_letter = 'A'
+        cell_ref = f"{col_letter}{row_idx}"
+        cell_elem = ET.SubElement(row_elem, 'c', {'r': cell_ref, 't': 'str'})
+        value_elem = ET.SubElement(cell_elem, 'v')
+        value_elem.text = handle_nan(row_data['Cell'])  # The cell reference from your data
+
+        # Column 'B': Solutions value
+        col_letter = 'B'
+        cell_ref = f"{col_letter}{row_idx}"
+        cell_elem = ET.SubElement(row_elem, 'c', {'r': cell_ref, 't': 'n'})  # 'n' for numeric
+        value_elem = ET.SubElement(cell_elem, 'v')
+        value_elem.text = str(handle_nan(row_data['Solutions']))  # Numeric value
+        
+        # Column 'C': Student value
+        col_letter = 'C'
+        cell_ref = f"{col_letter}{row_idx}"
+        cell_elem = ET.SubElement(row_elem, 'c', {'r': cell_ref, 't': 'n'})  # Create new element
+        value_elem = ET.SubElement(cell_elem, 'v')
+        value_elem.text = str(handle_nan(row_data['Student']))
+
+        # Column 'D': Credit Values
+        col_letter = 'D'
+        cell_ref = f"{col_letter}{row_idx}"
+        cell_elem = ET.SubElement(row_elem, 'c', {'r': cell_ref, 't': 'n'})  # Create new element
+        value_elem = ET.SubElement(cell_elem, 'v')
+        value_elem.text = str(handle_nan(row_data['Credit Values']))
+
+        # Column 'E': Cell Score
+        col_letter = 'E'
+        cell_ref = f"{col_letter}{row_idx}"
+        cell_elem = ET.SubElement(row_elem, 'c', {'r': cell_ref, 't': 'n'})  # Create new element
+        value_elem = ET.SubElement(cell_elem, 'v')
+        value_elem.text = str(handle_nan(row_data['Cell Score']))
+
+    # Convert the XML tree to a string
+    return ET.tostring(worksheet, encoding='utf-8', method='xml')
+
+# Function to add a new sheet to the workbook
+def add_new_sheet_to_workbook(workbook_xml, namespaces, new_sheet_name, new_sheet_id, new_r_id):
+    # Find the sheets element
+    sheets_elem = workbook_xml.find('.//ns:sheets', namespaces)
+    
+    # Create a new sheet element
+    new_sheet = ET.Element('sheet', {
+        'name': new_sheet_name,
+        'sheetId': str(new_sheet_id),
+        'r:id': new_r_id
+    })
+    
+    # Append the new sheet element
+    sheets_elem.append(new_sheet)
+
+# Modify relationships file to add new sheet relationship
+def add_new_sheet_relationship(rels_xml, new_r_id, new_sheet_number):
+    # Create a new relationship element
+    new_rel = ET.Element('Relationship', {
+        'Id': new_r_id,
+        'Type': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet',
+        'Target': f'worksheets/sheet{new_sheet_number}.xml'
+    })
+    
+    # Append the new relationship
+    rels_xml.append(new_rel)
+
+def get_next_sheet_number(workbook_xml, namespaces):
+    sheets = workbook_xml.findall('.//ns:sheet', namespaces)
+    if sheets:
+        last_sheet_id = max(int(sheet.attrib['sheetId']) for sheet in sheets)
+        return last_sheet_id + 1
+    else:
+        return 1  # If no sheets exist, start with sheet 1
+
+def add_data_sheets(df1, df2, current_workbook, sheet_num_one, sheet_num_two):
+    output = BytesIO()
+
+    with zipfile.ZipFile(current_workbook, 'r') as archive:
+        with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as new_archive:
+            sheet_num = sheet_num_one  # Initialize the sheet number
+
+            for file_info in archive.infolist():
+                file_data = archive.read(file_info.filename)
+
+                # Modify 'xl/workbook.xml' to add new sheets
+                if file_info.filename == 'xl/workbook.xml':
+                    workbook_xml = ET.fromstring(file_data)
+                    namespaces = {'ns': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+
+                    # First Sheet
+                    new_sheet_name_1 = 'NewSheet1'
+                    new_sheet_id_1 = sheet_num
+                    new_r_id_1 = f'rId{new_sheet_id_1}'
+
+                    # Add first sheet to workbook
+                    add_new_sheet_to_workbook(workbook_xml, namespaces, new_sheet_name_1, new_sheet_id_1, new_r_id_1)
+
+                    # Second Sheet
+                    sheet_num = sheet_num_two
+                    new_sheet_name_2 = 'NewSheet2'
+                    new_sheet_id_2 = sheet_num
+                    new_r_id_2 = f'rId{new_sheet_id_2}'
+
+                    # Add second sheet to workbook
+                    add_new_sheet_to_workbook(workbook_xml, namespaces, new_sheet_name_2, new_sheet_id_2, new_r_id_2)
+
+                    # Convert the modified XML back to byte string
+                    file_data = ET.tostring(workbook_xml, encoding='utf-8', method='xml')
+
+                # Modify 'xl/_rels/workbook.xml.rels' to add relationships for new sheets
+                elif file_info.filename == 'xl/_rels/workbook.xml.rels':
+                    rels_xml = ET.fromstring(file_data)
+
+                    # Add first sheet relationship
+                    add_new_sheet_relationship(rels_xml, new_r_id_1, new_sheet_id_1)
+
+                    # Add second sheet relationship
+                    add_new_sheet_relationship(rels_xml, new_r_id_2, new_sheet_id_2)
+
+                    # Convert the modified XML back to byte string
+                    file_data = ET.tostring(rels_xml, encoding='utf-8', method='xml')
+
+                # Write the (possibly modified) file back into the new ZIP archive
+                new_archive.writestr(file_info, file_data)
+
+            # Add the first new sheet file with data from df1
+            new_sheet_xml_1 = create_new_sheet_xml_with_data(df1)
+            new_archive.writestr(f'xl/worksheets/sheet{new_sheet_id_1}.xml', new_sheet_xml_1)
+
+            # Add the second new sheet file with data from df2
+            new_sheet_xml_2 = create_new_sheet_xml_with_data(df2)
+            new_archive.writestr(f'xl/worksheets/sheet{new_sheet_id_2}.xml', new_sheet_xml_2)
+
+    # Reset the buffer's position to the beginning for reading
+    output.seek(0)
+
+    return output
+
 def copy_sheet(source_file, target_file,keep_values = False):
     source_wb = openpyxl.load_workbook(source_file, keep_vba=True, data_only=True)
-    target_wb = openpyxl.load_workbook(target_file, keep_vba=True)
+    sheet_names = source_wb.sheetnames
+    sheet_num = 1
+    data = []
+    numbers = []
+    for sheet_name in sheet_names:
+        if sheet_name in ['Grading Key Sensitivity Table', 'Grading Key']:
+            data.append(get_df(source_file,sheet_name) )
+            numbers.append(sheet_num)
+        sheet_num += 1
     
-    for sheet_name in ['Grading Key', 'Grading Key Sensitivity Table']:
-        grading_key_sheet = source_wb[sheet_name]
-        new_sheet = target_wb[sheet_name]
-
-        keep_cells = ["C", "D", "E", "F", "G"]
-        for row_idx, row in enumerate(grading_key_sheet.iter_rows(), start=1):
-            for cell in row:
-                print("\n", new_sheet[cell.coordinate].value, "\n")
-                if cell.column_letter not in keep_cells:
-                    new_sheet[cell.coordinate] = ""
-                elif isinstance(cell.value, str) and cell.value.startswith('='):
-                    new_text = cell.value.replace("=", "")
-                    new_sheet[cell.coordinate] = new_text
-                elif cell.column_letter == 'E' and row_idx > 2:
-                    if keep_values:
-                        new_sheet[cell.coordinate] = cell.value
-                    else:
-                        new_sheet[cell.coordinate] = 0
-                else:
-                    new_sheet[cell.coordinate] = cell.value
-    # target_wb.save('updated_target_file.xlsm')
-    return target_wb
+    # data[0].insert(0, {"Cell":"Cell", "Solutions": "Solutions", "Student": "Student", "Credit Values": "Credit Values", "Cell Score": "Cell Score"})
+    # data[1].insert(0, {"Cell":"Cell", "Solutions": "Solutions", "Student": "Student", "Credit Values": "Credit Values", "Cell Score": "Cell Score"})
+    # print("\n", data[0][0], data[0][1], "\n")
+    return add_data_sheets(data[0], data[1], target_file, numbers[0], numbers[1])
+    
+    
 
 def paste_extracted_df(data, file, sheet_name):
     wb = openpyxl.load_workbook(file)
@@ -128,16 +282,27 @@ def paste_extracted_df(data, file, sheet_name):
     # Save the updated workbook
     wb.save("path_to_your_file.xlsm")
 
+def trim_dict(d, max_keys=5):
+    # Convert the dictionary to a list of tuples, and slice to get the first 5 items
+    return dict(list(d.items())[:max_keys])
+
 def get_df(source_file, sheet_name):
 
-    # Load the specified sheet into a DataFrame
     df = pd.read_excel(source_file, sheet_name=sheet_name, engine='openpyxl')
+    df_cleaned = df.dropna(how='all', axis=1)
+    
+    if df_cleaned.iloc[0].notna().sum() > 1:  
+        df_cleaned.columns = df_cleaned.iloc[0]
+        df_cleaned = df_cleaned.drop(0).reset_index(drop=True)
+    
+    df_cleaned = df_cleaned.dropna(how='all')  # Remove rows where all values are NaN
+    df_cleaned = df_cleaned.reset_index(drop=True)
+    data_dict = df_cleaned.to_dict(orient='records')  # Use 'records' to get a list of dictionaries
 
-    # Convert the DataFrame to a dictionary
-    data_dict = df.to_list(orient='records')  # You can also use 'dict' or 'list' based on your need
-
-    # Display the dictionary
-    return data_dict
+    # Apply the trimming function to each dictionary in the list
+    trimmed_data = [trim_dict(d) for d in data_dict]
+    
+    return trimmed_data
 
 def compare_results(file, data_dict):
     workbook = openpyxl.load_workbook(file, keep_vba=True)
@@ -367,28 +532,72 @@ def get_current_user():
 def remove_sheets(current_workbook):
     workbook = openpyxl.load_workbook(current_workbook, keep_vba=True, data_only=True)
 
-    sheets_to_keep = ['Instructions', 'Financial Model', 'Valuation Model', '']  
-
-    for sheet in workbook.sheetnames:
-        if sheet not in sheets_to_keep:
-            std = workbook[sheet]
-            std.sheet_state = 'veryHidden'  # Hide the sheet instead of removing
+    sheets_to_keep = ['Instructions', 'Financial Model', 'Valuation Model']
 
     output = BytesIO()
-    workbook.save(output)
-    output.seek(0) 
+
+    with zipfile.ZipFile(current_workbook, 'r') as archive:
+        with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as new_archive:
+            for file_info in archive.infolist():
+                file_data = archive.read(file_info.filename)
+
+                if file_info.filename == 'xl/workbook.xml':
+                    workbook_xml = ET.fromstring(file_data)
+                    namespaces = {'ns': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+                    
+                    sheets = workbook_xml.findall('.//ns:sheet', namespaces)
+                    
+                    # Modify the sheet visibility for sheets not in sheets_to_keep
+                    for sheet in sheets:
+                        sheet_name = sheet.attrib['name']
+                        if sheet_name not in sheets_to_keep:
+                            sheet.set('state', 'veryHidden')  # Set visibility to 'veryHidden'
+                    
+                    # Convert the modified XML back to a byte string
+                    file_data = ET.tostring(workbook_xml)
+
+                # Write the (possibly modified) file back into the new ZIP archive
+                new_archive.writestr(file_info, file_data)
+
+    # Reset the buffer's position to the beginning for reading
+    output.seek(0)
+
+    # Return the modified Excel file as a byte stream
     return output
 
 def visible_sheets(current_workbook):
     workbook = openpyxl.load_workbook(current_workbook, keep_vba=True, data_only=True)
 
-    for sheet in workbook.sheetnames:
-        std = workbook[sheet]
-        std.sheet_state = 'visible'
-        
+    # for sheet in workbook.sheetnames:
+    #     std = workbook[sheet]
+    #     std.sheet_state = 'visible'
+
     output = BytesIO()
-    workbook.save(output)
-    output.seek(0) 
+    with zipfile.ZipFile(current_workbook, 'r') as archive:
+        with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as new_archive:
+            for file_info in archive.infolist():
+                file_data = archive.read(file_info.filename)
+
+                if file_info.filename == 'xl/workbook.xml':
+                    workbook_xml = ET.fromstring(file_data)
+                    namespaces = {'ns': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+                    
+                    sheets = workbook_xml.findall('.//ns:sheet', namespaces)
+                    
+                    # Modify the sheet visibility for sheets not in sheets_to_keep
+                    for sheet in sheets:
+                        sheet.set('state', 'visible')  # Set visibility to 'veryHidden'
+                    
+                    # Convert the modified XML back to a byte string
+                    file_data = ET.tostring(workbook_xml)
+
+                # Write the (possibly modified) file back into the new ZIP archive
+                new_archive.writestr(file_info, file_data)
+
+    # Reset the buffer's position to the beginning for reading
+    output.seek(0)
+
+    # Return the modified Excel file as a byte stream
     return output
 
 def allowed_file(filename):

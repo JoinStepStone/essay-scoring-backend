@@ -91,11 +91,11 @@ def simulation_start():
         file_bytes = base64.b64decode(request.form.get('file_in_byte'))
         file_buffer = BytesIO(file_bytes)
         student_updated_file = copy_sheet(file_buffer, file, True)
-        file_stream = BytesIO()
-        student_updated_file.save(file_stream)
-        file_stream.seek(0)
+        # file_stream = BytesIO()
+        # student_updated_file.save(file_stream)
+        # file_stream.seek(0)
         # filepath = upload_file(file)
-        grid_out = gridFileStorage.put(file_stream, filename=file.filename)
+        grid_out = gridFileStorage.put(student_updated_file, filename=file.filename)
         objectData = {
             "status": request.form.get('status'),
             "sharingScore": request.form.get('sharingScore'),

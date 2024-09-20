@@ -191,7 +191,6 @@ def updateUserSimulationController(data):
         }
         
         gradeCheck = list(user_simulation_database.find(filter_query))[0]
-        print("\n", gradeCheck, "\n")
         # Update the document
         result = user_simulation_database.update_one(filter_query, update_query)
 
