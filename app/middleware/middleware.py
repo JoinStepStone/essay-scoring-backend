@@ -13,6 +13,7 @@ import math
 import base64
 import zipfile
 from xml.etree import ElementTree as ET
+from lxml import etree as ET
 
 # Secret key for JWT encoding/decoding
 SECRET_KEY = "your_secret_key_here"
@@ -72,152 +73,214 @@ def fill_values_get_score(source_wbb, target_file):
     encoded_excel = base64.b64encode(output.read()).decode('utf-8')
     return {"score": sum(score)+sensitive_value, 'file': encoded_excel}, True, ""
 
-# Function to generate a new sheet XML with dummy data
 def create_new_sheet_xml_with_data(data):
-    worksheet = ET.Element('worksheet', xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main")
-    sheet_data = ET.SubElement(worksheet, 'sheetData')
-    
+    # Define the namespaces
+    nsmap = {
+        None: 'http://schemas.openxmlformats.org/spreadsheetml/2006/main',
+        'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+        'mc': 'http://schemas.openxmlformats.org/markup-compatibility/2006',
+        'x14ac': 'http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac',
+    }
+
+    # Create the root element with namespace declarations
+    worksheet = ET.Element('{http://schemas.openxmlformats.org/spreadsheetml/2006/main}worksheet', nsmap=nsmap)
+    worksheet.set('{http://schemas.openxmlformats.org/markup-compatibility/2006}Ignorable', 'x14ac')
+
+    # Add required elements
+    dimension = ET.SubElement(
+        worksheet,
+        '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}dimension',
+        {'ref': f'A1:E{len(data) + 1}'}
+    )
+    sheet_views = ET.SubElement(
+        worksheet,
+        '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheetViews'
+    )
+    sheet_view = ET.SubElement(
+        sheet_views,
+        '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheetView',
+        {'workbookViewId': '0'}
+    )
+    sheet_format_pr = ET.SubElement(
+        worksheet,
+        '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheetFormatPr',
+        {
+            'defaultRowHeight': '15',
+            '{http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac}dyDescent': '0.25'
+        }
+    )
+
+    sheet_data = ET.SubElement(
+        worksheet,
+        '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheetData'
+    )
+
     def handle_nan(value):
         """Replace NaN with empty string or any other desired placeholder."""
         return "" if isinstance(value, float) and math.isnan(value) else value
 
     # First, add the header row (row 1)
     headers = ["Cell", "Solutions", "Student", "Credit Values", "Cell Score"]
-    header_row = ET.SubElement(sheet_data, 'row', {'r': '1'})  # Header row is always row 1
+    header_row = ET.SubElement(
+        sheet_data,
+        '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}row',
+        {'r': '1'}
+    )
     for col_idx, header in enumerate(headers):
         col_letter = chr(ord('A') + col_idx)  # Column letters: A, B, C, D, E...
         cell_ref = f"{col_letter}1"
-        cell_elem = ET.SubElement(header_row, 'c', {'r': cell_ref, 't': 'str'})
-        value_elem = ET.SubElement(cell_elem, 'v')
+        cell_elem = ET.SubElement(
+            header_row,
+            '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}c',
+            {'r': cell_ref, 't': 'str'}
+        )
+        value_elem = ET.SubElement(
+            cell_elem,
+            '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}v'
+        )
         value_elem.text = header  # Set header text
 
     # Now, iterate through the data starting at row 2
     for row_idx, row_data in enumerate(data, 2):  # Row index starts from 2 (after the header)
-        row_elem = ET.SubElement(sheet_data, 'row', {'r': str(row_idx)})
+        row_elem = ET.SubElement(
+            sheet_data,
+            '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}row',
+            {'r': str(row_idx)}
+        )
 
-        # Column 'A': Cell reference
-        col_letter = 'A'
-        cell_ref = f"{col_letter}{row_idx}"
-        cell_elem = ET.SubElement(row_elem, 'c', {'r': cell_ref, 't': 'str'})
-        value_elem = ET.SubElement(cell_elem, 'v')
-        value_elem.text = handle_nan(row_data['Cell'])  # The cell reference from your data
+        # Columns A to E
+        columns = ['Cell', 'Solutions', 'Student', 'Credit Values', 'Cell Score']
+        for col_idx, col_name in enumerate(columns):
+            col_letter = chr(ord('A') + col_idx)
+            cell_ref = f"{col_letter}{row_idx}"
+            cell_type = 'n' if col_name != 'Cell' else 'str'
+            cell_elem = ET.SubElement(
+                row_elem,
+                '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}c',
+                {'r': cell_ref, 't': cell_type}
+            )
+            value_elem = ET.SubElement(
+                cell_elem,
+                '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}v'
+            )
+            value = handle_nan(row_data.get(col_name, ""))
+            if cell_type == 'n' and value == "":
+                value = "0"  # Default numerical value if NaN or empty
+            value_elem.text = str(value)
 
-        # Column 'B': Solutions value
-        col_letter = 'B'
-        cell_ref = f"{col_letter}{row_idx}"
-        cell_elem = ET.SubElement(row_elem, 'c', {'r': cell_ref, 't': 'n'})  # 'n' for numeric
-        value_elem = ET.SubElement(cell_elem, 'v')
-        value_elem.text = str(handle_nan(row_data['Solutions']))  # Numeric value
-        
-        # Column 'C': Student value
-        col_letter = 'C'
-        cell_ref = f"{col_letter}{row_idx}"
-        cell_elem = ET.SubElement(row_elem, 'c', {'r': cell_ref, 't': 'n'})  # Create new element
-        value_elem = ET.SubElement(cell_elem, 'v')
-        value_elem.text = str(handle_nan(row_data['Student']))
-
-        # Column 'D': Credit Values
-        col_letter = 'D'
-        cell_ref = f"{col_letter}{row_idx}"
-        cell_elem = ET.SubElement(row_elem, 'c', {'r': cell_ref, 't': 'n'})  # Create new element
-        value_elem = ET.SubElement(cell_elem, 'v')
-        value_elem.text = str(handle_nan(row_data['Credit Values']))
-
-        # Column 'E': Cell Score
-        col_letter = 'E'
-        cell_ref = f"{col_letter}{row_idx}"
-        cell_elem = ET.SubElement(row_elem, 'c', {'r': cell_ref, 't': 'n'})  # Create new element
-        value_elem = ET.SubElement(cell_elem, 'v')
-        value_elem.text = str(handle_nan(row_data['Cell Score']))
-
-    # Convert the XML tree to a string
-    return ET.tostring(worksheet, encoding='utf-8', method='xml')
+    # Convert the XML tree to a string with proper encoding and XML declaration
+    return ET.tostring(worksheet, encoding='utf-8', xml_declaration=True, pretty_print=False)
 
 # Function to add a new sheet to the workbook
-def add_new_sheet_to_workbook(workbook_xml, namespaces, new_sheet_name, new_sheet_id, new_r_id):
+def add_new_sheet_to_workbook(workbook_xml_data, new_sheet_name, new_sheet_id, new_r_id):
+    # Define namespaces
+    nsmap = {
+        'main': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main',
+        'r': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
+    }
+
+    # Parse XML with lxml
+    root = ET.fromstring(workbook_xml_data)
+
     # Find the sheets element
-    sheets_elem = workbook_xml.find('.//ns:sheets', namespaces)
-    
+    sheets_elem = root.find('.//main:sheets', namespaces=nsmap)
+    if sheets_elem is None:
+        # If sheets element is not found, create it
+        sheets_elem = ET.SubElement(
+            root,
+            '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheets'
+        )
+
     # Create a new sheet element
-    new_sheet = ET.Element('sheet', {
-        'name': new_sheet_name,
-        'sheetId': str(new_sheet_id),
-        'r:id': new_r_id
-    })
-    
+    new_sheet = ET.Element(
+        '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}sheet',
+        attrib={
+            'name': new_sheet_name,
+            'sheetId': str(new_sheet_id),
+            '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id': new_r_id
+        }
+    )
+
     # Append the new sheet element
     sheets_elem.append(new_sheet)
 
+    # Convert back to string
+    return ET.tostring(root, encoding='utf-8', xml_declaration=True)
+
 # Modify relationships file to add new sheet relationship
-def add_new_sheet_relationship(rels_xml, new_r_id, new_sheet_number):
+def add_new_sheet_relationship(rels_xml_data, new_r_id, new_sheet_number):
+    # Parse XML with lxml
+    root = ET.fromstring(rels_xml_data)
+
     # Create a new relationship element
-    new_rel = ET.Element('Relationship', {
+    new_rel = ET.Element('Relationship', attrib={
         'Id': new_r_id,
         'Type': 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet',
         'Target': f'worksheets/sheet{new_sheet_number}.xml'
     })
-    
-    # Append the new relationship
-    rels_xml.append(new_rel)
 
-def get_next_sheet_number(workbook_xml, namespaces):
-    sheets = workbook_xml.findall('.//ns:sheet', namespaces)
+    # Append the new relationship
+    root.append(new_rel)
+
+    # Convert back to string
+    return ET.tostring(root, encoding='utf-8', xml_declaration=True)
+
+# Function to get the next sheet number
+def get_next_sheet_number(workbook_xml_data):
+    # Define namespaces
+    nsmap = {
+        'main': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
+    }
+
+    # Parse XML with lxml
+    root = ET.fromstring(workbook_xml_data)
+
+    sheets = root.findall('.//main:sheet', namespaces=nsmap)
     if sheets:
-        last_sheet_id = max(int(sheet.attrib['sheetId']) for sheet in sheets)
+        last_sheet_id = max(int(sheet.get('sheetId')) for sheet in sheets)
         return last_sheet_id + 1
     else:
         return 1  # If no sheets exist, start with sheet 1
 
-def add_data_sheets(df1, df2, current_workbook, sheet_num_one, sheet_num_two):
+# Function to add data sheets to the workbook
+def add_data_sheets(df1, df2, current_workbook):
     output = BytesIO()
 
     with zipfile.ZipFile(current_workbook, 'r') as archive:
         with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as new_archive:
-            sheet_num = sheet_num_one  # Initialize the sheet number
+            # Read the workbook.xml to get the next sheet IDs
+            workbook_xml_data = archive.read('xl/workbook.xml')
+            new_sheet_id_1 = get_next_sheet_number(workbook_xml_data)
+            new_sheet_id_2 = new_sheet_id_1 + 1
+            new_r_id_1 = f'rId{new_sheet_id_1}'
+            new_r_id_2 = f'rId{new_sheet_id_2}'
 
+            # Modify workbook.xml
+            workbook_xml_modified = add_new_sheet_to_workbook(
+                workbook_xml_data, 'Grading Key Computed', new_sheet_id_1, new_r_id_1)
+            workbook_xml_modified = add_new_sheet_to_workbook(
+                workbook_xml_modified, 'Grading Key Sensitivity Table Computed', new_sheet_id_2, new_r_id_2)
+
+            # Modify workbook.xml.rels
+            rels_xml_data = archive.read('xl/_rels/workbook.xml.rels')
+            rels_xml_modified = add_new_sheet_relationship(
+                rels_xml_data, new_r_id_1, new_sheet_id_1)
+            rels_xml_modified = add_new_sheet_relationship(
+                rels_xml_modified, new_r_id_2, new_sheet_id_2)
+
+            # Write all files, replacing modified ones
             for file_info in archive.infolist():
                 file_data = archive.read(file_info.filename)
 
-                # Modify 'xl/workbook.xml' to add new sheets
                 if file_info.filename == 'xl/workbook.xml':
-                    workbook_xml = ET.fromstring(file_data)
-                    namespaces = {'ns': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
-
-                    # First Sheet
-                    new_sheet_name_1 = 'NewSheet1'
-                    new_sheet_id_1 = sheet_num
-                    new_r_id_1 = f'rId{new_sheet_id_1}'
-
-                    # Add first sheet to workbook
-                    add_new_sheet_to_workbook(workbook_xml, namespaces, new_sheet_name_1, new_sheet_id_1, new_r_id_1)
-
-                    # Second Sheet
-                    sheet_num = sheet_num_two
-                    new_sheet_name_2 = 'NewSheet2'
-                    new_sheet_id_2 = sheet_num
-                    new_r_id_2 = f'rId{new_sheet_id_2}'
-
-                    # Add second sheet to workbook
-                    add_new_sheet_to_workbook(workbook_xml, namespaces, new_sheet_name_2, new_sheet_id_2, new_r_id_2)
-
-                    # Convert the modified XML back to byte string
-                    file_data = ET.tostring(workbook_xml, encoding='utf-8', method='xml')
-
-                # Modify 'xl/_rels/workbook.xml.rels' to add relationships for new sheets
+                    # Write modified workbook.xml
+                    new_archive.writestr(file_info.filename, workbook_xml_modified)
                 elif file_info.filename == 'xl/_rels/workbook.xml.rels':
-                    rels_xml = ET.fromstring(file_data)
-
-                    # Add first sheet relationship
-                    add_new_sheet_relationship(rels_xml, new_r_id_1, new_sheet_id_1)
-
-                    # Add second sheet relationship
-                    add_new_sheet_relationship(rels_xml, new_r_id_2, new_sheet_id_2)
-
-                    # Convert the modified XML back to byte string
-                    file_data = ET.tostring(rels_xml, encoding='utf-8', method='xml')
-
-                # Write the (possibly modified) file back into the new ZIP archive
-                new_archive.writestr(file_info, file_data)
+                    # Write modified relationships
+                    new_archive.writestr(file_info.filename, rels_xml_modified)
+                else:
+                    # Write unmodified file
+                    new_archive.writestr(file_info, file_data)
 
             # Add the first new sheet file with data from df1
             new_sheet_xml_1 = create_new_sheet_xml_with_data(df1)
@@ -247,7 +310,7 @@ def copy_sheet(source_file, target_file,keep_values = False):
     # data[0].insert(0, {"Cell":"Cell", "Solutions": "Solutions", "Student": "Student", "Credit Values": "Credit Values", "Cell Score": "Cell Score"})
     # data[1].insert(0, {"Cell":"Cell", "Solutions": "Solutions", "Student": "Student", "Credit Values": "Credit Values", "Cell Score": "Cell Score"})
     # print("\n", data[0][0], data[0][1], "\n")
-    return add_data_sheets(data[0], data[1], target_file, numbers[0], numbers[1])
+    return add_data_sheets(data[0], data[1], target_file)
     
     
 
@@ -530,14 +593,12 @@ def get_current_user():
     return getattr(g, "current_user", None)
 
 def remove_sheets(current_workbook):
-    workbook = openpyxl.load_workbook(current_workbook, keep_vba=True, data_only=True)
-
+    # workbook = openpyxl.load_workbook(current_workbook, keep_vba=True, data_only=True)
     sheets_to_keep = ['Instructions', 'Financial Model', 'Valuation Model']
 
     output = BytesIO()
-
     with zipfile.ZipFile(current_workbook, 'r') as archive:
-        with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as new_archive:
+        with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED) as new_archive:
             for file_info in archive.infolist():
                 file_data = archive.read(file_info.filename)
 
@@ -549,13 +610,13 @@ def remove_sheets(current_workbook):
                     
                     # Modify the sheet visibility for sheets not in sheets_to_keep
                     for sheet in sheets:
-                        sheet_name = sheet.attrib['name']
+                        sheet_name = sheet.get('name')
                         if sheet_name not in sheets_to_keep:
                             sheet.set('state', 'veryHidden')  # Set visibility to 'veryHidden'
                     
-                    # Convert the modified XML back to a byte string
-                    file_data = ET.tostring(workbook_xml)
-
+                    # Convert the modified XML back to a byte string with proper encoding and declaration
+                    file_data = ET.tostring(workbook_xml, encoding='utf-8', xml_declaration=True, standalone=False)
+                
                 # Write the (possibly modified) file back into the new ZIP archive
                 new_archive.writestr(file_info, file_data)
 
@@ -566,7 +627,7 @@ def remove_sheets(current_workbook):
     return output
 
 def visible_sheets(current_workbook):
-    workbook = openpyxl.load_workbook(current_workbook, keep_vba=True, data_only=True)
+    # workbook = openpyxl.load_workbook(current_workbook, keep_vba=True, data_only=True)
 
     # for sheet in workbook.sheetnames:
     #     std = workbook[sheet]
@@ -574,7 +635,7 @@ def visible_sheets(current_workbook):
 
     output = BytesIO()
     with zipfile.ZipFile(current_workbook, 'r') as archive:
-        with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as new_archive:
+        with zipfile.ZipFile(output, 'w', compression=zipfile.ZIP_DEFLATED) as new_archive:
             for file_info in archive.infolist():
                 file_data = archive.read(file_info.filename)
 
@@ -588,9 +649,9 @@ def visible_sheets(current_workbook):
                     for sheet in sheets:
                         sheet.set('state', 'visible')  # Set visibility to 'veryHidden'
                     
-                    # Convert the modified XML back to a byte string
-                    file_data = ET.tostring(workbook_xml)
-
+                    # Convert the modified XML back to a byte string with proper encoding and declaration
+                    file_data = ET.tostring(workbook_xml, encoding='utf-8', xml_declaration=True, standalone=False)
+                
                 # Write the (possibly modified) file back into the new ZIP archive
                 new_archive.writestr(file_info, file_data)
 
@@ -599,7 +660,7 @@ def visible_sheets(current_workbook):
 
     # Return the modified Excel file as a byte stream
     return output
-
+    
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
