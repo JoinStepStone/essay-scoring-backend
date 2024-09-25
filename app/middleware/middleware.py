@@ -14,18 +14,32 @@ import base64
 import zipfile
 from xml.etree import ElementTree as ET
 from lxml import etree as ET
-
+import re
 # Secret key for JWT encoding/decoding
 SECRET_KEY = "your_secret_key_here"
 ALLOWED_EXTENSIONS = {'xlsm'}
 
+def is_direct_cell_reference(formula):
+    if isinstance(formula, str):
+        # Remove the leading '='
+        formula = formula.lstrip('=').strip()
+        
+        # Regular expression to match a cell reference optionally with sheet name
+        pattern = r'[A-Za-z][0-9]'
+        
+        return re.match(pattern, formula) 
+
+    return True
+
 def fill_values_get_score(source_wbb, target_file):
     target_wb = openpyxl.load_workbook(target_file, keep_vba=True, data_only= True)
     source_wb = openpyxl.load_workbook(source_wbb, keep_vba=True, data_only= True)
+    target_wb_with_formula = openpyxl.load_workbook(target_file, keep_vba=True)
     replace_name_dict = {"Toggle Valuation_Solution": "Valuation Model", "Toggle Model_Solutions": "Financial Model"}
     score = []
     for sheet_name in ['Grading Key', 'Grading Key Sensitivity Table']:
         grading_key_sheet = source_wb[sheet_name]
+        grading_key_sheet_with_formula = target_wb_with_formula[sheet_name]
 
         keep_cells = ["C"]
         not_found_value = True
@@ -55,6 +69,13 @@ def fill_values_get_score(source_wbb, target_file):
 
                 if target_cell_value is None:
                     target_cell_value = 0
+                
+                if'isformula' in grading_key_sheet_with_formula['G'+str(row_idx)].value.lower():
+                    if is_direct_cell_reference(target_wb_with_formula[target_sheet_name][cell_number].value):
+                        if sheet_name == 'Grading Key Sensitivity Table':
+                            sensitive_value = 0
+                        grading_key_sheet['G'+str(row_idx)] = 0
+                        continue
                 if round(grading_key_sheet['D'+str(row_idx)].value,3) != round(target_cell_value,3):
                     if sheet_name == 'Grading Key Sensitivity Table':
                         sensitive_value = 0
