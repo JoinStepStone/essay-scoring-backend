@@ -9,8 +9,8 @@ class SimulationSchema(BaseModel):
     category: str
     simulationName: str
     organizationName: str
-    startTime: datetime
-    endTime: datetime
+    startTime: str
+    endTime: str
     duration: Optional[str] = None  # Store duration as a string
     fileId: Optional[str] = None
     fileName: Optional[str] = None

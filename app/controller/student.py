@@ -114,8 +114,9 @@ def simulationSelectionController(data):
 
         simulation = list(simulation_database.find( {"classCode" : data["classCode"], "status": True }))
         if simulation:
-            found = list(user_simulation_database.find({"simulationId":simulation[0]["_id"], "userId": data["userId"]}))
+            found = list(user_simulation_database.find({"simulationId":str(simulation[0]["_id"]), "userId": str(data["userId"])}))
             userSimulatio = UserSimulationSchema(**{"simulationId":str(simulation[0]["_id"]), "userId": data["userId"]})
+            print("Found", found, data["userId"], simulation[0]["_id"])
             if found:
                 return "", False, "You are already registered"
 
