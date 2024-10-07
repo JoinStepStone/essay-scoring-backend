@@ -2,6 +2,37 @@ from pydantic import ValidationError
 from app import user_database, name_storage_database
 from ..models.user import UserSchema
 from ..middleware.middleware import generate_access_token
+from bson import ObjectId
+
+def setNewPasswordController(data):
+    filter_query_simulation = {
+        "email": data["email"]
+    }
+    # Define the update query
+    update_query_simulation = {
+        "$set": {"password": data["password"]}
+    }
+    # Update the document
+    result1 = user_database.update_one(filter_query_simulation, update_query_simulation)
+
+    if result1.matched_count == 0:
+        if result1.modified_count > 0:
+            print("Document updated successfully.")
+        else:
+            print("Document matched but no changes were made (maybe the data was already the same).")
+   
+    return "", True, "Password has been updated"
+
+def verifyEmailAddressController(data):
+    try:
+        print("Email", data)
+        existing_user = user_database.find_one({"email": data["email"]})
+        if not existing_user:
+            return "", False, "User with this email already not found"
+        else:
+            return "", True, "Update your password"
+    except ValidationError as e:
+        return str(e), False, "Something went bad"
 
 def getUniListNamesController():
     try:

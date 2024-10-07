@@ -1,6 +1,9 @@
 from flask import request, jsonify
 from app import app, db
-from ..controller.authorization import signUpController, signInController, getUniListNamesController
+from ..controller.authorization import (
+    signUpController, signInController, getUniListNamesController, verifyEmailAddressController,
+    setNewPasswordController
+    )
 import os
 from datetime import datetime
 import json
@@ -31,6 +34,22 @@ def check_auth():
 def signUp():
     data = request.json
     response, success, message = signUpController(data)
+    if success:
+        return jsonify({"data": response, "code": 201, "message": message})
+    return jsonify({"error": response, "code": 400, "message": message})
+
+@app.route('/setNewPassword', methods=['POST'])
+def setNewPassword():
+    data = request.json
+    response, success, message = setNewPasswordController(data)
+    if success:
+        return jsonify({"data": response, "code": 201, "message": message})
+    return jsonify({"error": response, "code": 400, "message": message})
+
+@app.route('/verifyEmailAddress', methods=['POST'])
+def verifyEmail():
+    data = request.json
+    response, success, message = verifyEmailAddressController(data)
     if success:
         return jsonify({"data": response, "code": 201, "message": message})
     return jsonify({"error": response, "code": 400, "message": message})
