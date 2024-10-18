@@ -37,6 +37,7 @@ def fill_values_get_score(source_wbb, target_file):
     target_wb_with_formula = openpyxl.load_workbook(target_file, keep_vba=True)
     replace_name_dict = {"Toggle Valuation_Solution": "Valuation Model", "Toggle Model_Solutions": "Financial Model"}
     score = []
+    total_score = []
     for sheet_name in ['Grading Key', 'Grading Key Sensitivity Table']:
         grading_key_sheet = source_wb[sheet_name]
         grading_key_sheet_with_formula = target_wb_with_formula[sheet_name]
@@ -60,6 +61,7 @@ def fill_values_get_score(source_wbb, target_file):
                 if sheet_name == 'Grading Key Sensitivity Table' and not_found_value:
                     not_found_value = False
                     sensitive_value = grading_key_sheet['F'+str(row_idx - 1)].value
+                    total_score.append(grading_key_sheet['F'+str(row_idx - 1)].value)
 
                 cell_number = cell.value.split('!')[1]
 
@@ -81,8 +83,10 @@ def fill_values_get_score(source_wbb, target_file):
                         sensitive_value = 0
                     # print(f"Row: {row_idx} Value in {cell_number} of sheet '{target_sheet_name}': {round(grading_key_sheet['D'+str(row_idx)].value,3)} {round(target_cell_value,3)} ")
                     grading_key_sheet['G'+str(row_idx)] = 0
+                    total_score.append(grading_key_sheet['F'+str(row_idx)].value)
                 else:
                     if sheet_name != 'Grading Key Sensitivity Table':
+                        total_score.append(grading_key_sheet['F'+str(row_idx)].value)
                         score.append(grading_key_sheet['F'+str(row_idx)].value)
                     grading_key_sheet['G'+str(row_idx)] = grading_key_sheet['F'+str(row_idx)].value
                     
@@ -92,7 +96,7 @@ def fill_values_get_score(source_wbb, target_file):
 
     # Base64 encode the binary data for sending in JSON
     encoded_excel = base64.b64encode(output.read()).decode('utf-8')
-    return {"score": sum(score)+sensitive_value, 'file': encoded_excel}, True, ""
+    return {"score": round(((sum(score)+sensitive_value)/sum(total_score))*100,2), 'file': encoded_excel}, True, ""
 
 def create_new_sheet_xml_with_data(data):
     # Define the namespaces
