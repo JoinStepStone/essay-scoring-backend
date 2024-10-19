@@ -63,6 +63,9 @@ def fill_values_get_score(source_wbb, target_file):
                     sensitive_value = grading_key_sheet['F'+str(row_idx - 1)].value
                     total_score.append(grading_key_sheet['F'+str(row_idx - 1)].value)
 
+                if sheet_name != 'Grading Key Sensitivity Table':
+                    total_score.append(grading_key_sheet['F'+str(row_idx)].value)
+
                 cell_number = cell.value.split('!')[1]
 
                 target_sheet = target_wb[target_sheet_name]  # Financial model or valuation model
@@ -77,16 +80,18 @@ def fill_values_get_score(source_wbb, target_file):
                         if sheet_name == 'Grading Key Sensitivity Table':
                             sensitive_value = 0
                         grading_key_sheet['G'+str(row_idx)] = 0
-                        continue
+                    else:
+                        if sheet_name != 'Grading Key Sensitivity Table':
+                            score.append(grading_key_sheet['F'+str(row_idx)].value)
+                        grading_key_sheet['G'+str(row_idx)] = grading_key_sheet['F'+str(row_idx)].value
+                    continue
                 if round(grading_key_sheet['D'+str(row_idx)].value,3) != round(target_cell_value,3):
                     if sheet_name == 'Grading Key Sensitivity Table':
                         sensitive_value = 0
                     # print(f"Row: {row_idx} Value in {cell_number} of sheet '{target_sheet_name}': {round(grading_key_sheet['D'+str(row_idx)].value,3)} {round(target_cell_value,3)} ")
                     grading_key_sheet['G'+str(row_idx)] = 0
-                    total_score.append(grading_key_sheet['F'+str(row_idx)].value)
                 else:
                     if sheet_name != 'Grading Key Sensitivity Table':
-                        total_score.append(grading_key_sheet['F'+str(row_idx)].value)
                         score.append(grading_key_sheet['F'+str(row_idx)].value)
                     grading_key_sheet['G'+str(row_idx)] = grading_key_sheet['F'+str(row_idx)].value
                     
